@@ -1,5 +1,12 @@
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import { useFilters } from "@/context/FilterContext";
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 import {
   Facebook,
   Instagram,
@@ -10,7 +17,33 @@ import {
   ChevronLeft,
 } from "lucide-react";
 
-// Data Structure: Category -> Array of Announcements
+// --- Helpers ---
+const getFormattedPrice = (price: number, curr: string) => {
+  switch (curr) {
+    case "USD":
+      return `$ ${price.toFixed(2)}`;
+    case "LYD":
+      return `${price.toFixed(2)} د.ل`;
+    case "EGP":
+      return `${price.toFixed(2)} ج.م`;
+    case "SAR":
+      return `${price.toFixed(2)} ر.س`;
+    case "DZD":
+      return `${price.toFixed(2)} د.ج`;
+    case "AED":
+      return `${price.toFixed(2)} د.إ`;
+    default:
+      return `${price} ${curr}`;
+  }
+};
+
+const formatFollowers = (num: number) => {
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
+  if (num >= 1000) return (num / 1000).toFixed(1) + "K";
+  return num.toString();
+};
+
+// --- Data Structure ---
 const platformsData = [
   {
     category: "انستقرام - Instagram",
@@ -265,215 +298,269 @@ const platformKeyMap: Record<string, string> = {
   x: "اكس",
 };
 
+// --- Type Definition ---
+type AnnouncementRow = {
+  id: number;
+  title: string;
+  price: number;
+  currency: string;
+  followers: number;
+  account_created_at: string;
+  link: string;
+  platformName: string;
+  platformIcon: React.ReactNode;
+};
+
+const columnHelper = createColumnHelper<AnnouncementRow>();
+
 export default function ServicesList() {
   const { filters } = useFilters();
-  const [currentPage, setCurrentPage] = useState(1);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filters]);
-
-  const getFormattedPrice = (price: number, curr: string) => {
-    switch (curr) {
-      case "USD":
-        return `$ ${price.toFixed(2)}`;
-      case "LYD":
-        return `${price.toFixed(2)} د.ل`;
-      case "EGP":
-        return `${price.toFixed(2)} ج.م`;
-      case "SAR":
-        return `${price.toFixed(2)} ر.س`;
-      case "DZD":
-        return `${price.toFixed(2)} د.ج`;
-      case "AED":
-        return `${price.toFixed(2)} د.إ`;
-      default:
-        return `${price} ${curr}`;
-    }
-  };
-
-  const formatFollowers = (num: number) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
-    if (num >= 1000) return (num / 1000).toFixed(1) + "K";
-    return num.toString();
-  };
 
   const activeCurrency = filters.currency;
   const activeQuery = filters.query?.trim().toLowerCase() ?? "";
   const activePlatform = filters.platform ?? "all";
 
   // Filter logic
-  const filteredAnnouncements = platformsData.flatMap((platform) => {
-    // Platform filter
-    if (activePlatform !== "all") {
-      const keyword = platformKeyMap[activePlatform] ?? "";
-      if (!platform.category.includes(keyword)) return [];
-    }
-    return platform.announcements
-      .filter((ann) => {
-        const currencyMatch =
-          activeCurrency === "ALL" || ann.currency === activeCurrency;
-        const queryMatch =
-          !activeQuery || ann.title.toLowerCase().includes(activeQuery);
-        return currencyMatch && queryMatch;
-      })
-      .map((ann) => ({
-        ...ann,
-        platformName: platform.category,
-        platformIcon: platform.icon,
-      }));
-  });
+  const filteredData = useMemo(() => {
+    return platformsData.flatMap((platform) => {
+      if (activePlatform !== "all") {
+        const keyword = platformKeyMap[activePlatform] ?? "";
+        if (!platform.category.includes(keyword)) return [];
+      }
 
-  const totalAnnouncements = filteredAnnouncements.length;
+      return platform.announcements
+        .filter((ann) => {
+          const currencyMatch =
+            activeCurrency === "ALL" || ann.currency === activeCurrency;
+          const queryMatch =
+            !activeQuery || ann.title.toLowerCase().includes(activeQuery);
+          const followersMatch =
+            ann.followers >= filters.followersRange[0] &&
+            ann.followers <= filters.followersRange[1];
+          const priceMatch =
+            ann.price >= filters.priceRange[0] &&
+            ann.price <= filters.priceRange[1];
 
-  const ITEMS_PER_PAGE = 10;
-  const totalPages = Math.ceil(totalAnnouncements / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedAnnouncements = filteredAnnouncements.slice(
-    startIndex,
-    startIndex + ITEMS_PER_PAGE,
+          return currencyMatch && queryMatch && followersMatch && priceMatch;
+        })
+        .map((ann) => ({
+          ...ann,
+          platformName: platform.category,
+          platformIcon: platform.icon,
+        }));
+    });
+  }, [
+    activePlatform,
+    activeCurrency,
+    activeQuery,
+    filters.followersRange,
+    filters.priceRange,
+  ]);
+
+  // TanStack Columns Definition
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("platformIcon", {
+        header: "المنصة",
+        cell: (info) => (
+          <div
+            // تصغير الأيقونة ومربعها
+            className="inline-flex items-center justify-center bg-background p-1.5 md:p-2 rounded-lg border border-white/10 shadow-sm [&>svg]:w-4 [&>svg]:h-4 md:[&>svg]:w-5 md:[&>svg]:h-5"
+            title={info.row.original.platformName.split(" - ")[0]}
+          >
+            {info.getValue()}
+          </div>
+        ),
+      }),
+      columnHelper.accessor("title", {
+        header: "العنوان (الإعلان)",
+        cell: (info) => (
+          <span
+            // تصغير خط العنوان (text-xs للموبايل و text-sm للابتوب)
+            className="font-medium text-white text-xs md:text-sm max-w-[200px] md:max-w-xs block truncate"
+            title={info.getValue()}
+          >
+            {info.getValue()}
+          </span>
+        ),
+      }),
+      columnHelper.accessor("followers", {
+        header: "المتابعين",
+        cell: (info) => (
+          <span
+            // تصغير مربع المتابعين
+            className="font-mono text-gray-200 font-bold bg-white/5 px-1.5 py-0.5 md:px-2 md:py-1 rounded-md inline-block text-xs md:text-sm"
+            dir="ltr"
+          >
+            {formatFollowers(info.getValue())}
+          </span>
+        ),
+      }),
+      columnHelper.accessor("account_created_at", {
+        header: "سنة الإنشاء",
+        cell: (info) => (
+          <span className="font-mono text-gray-400 text-xs md:text-sm">
+            {info.getValue()}
+          </span>
+        ),
+      }),
+      columnHelper.accessor("price", {
+        header: "السعر",
+        cell: (info) => (
+          <span
+            // تصغير خط السعر (text-sm للموبايل و text-base للابتوب)
+            className="text-accent font-bold text-sm md:text-base bg-accent/10 px-2 py-1 md:px-3 rounded-md whitespace-nowrap min-w-[80px] md:min-w-[100px] inline-block text-center"
+          >
+            {getFormattedPrice(info.getValue(), info.row.original.currency)}
+          </span>
+        ),
+      }),
+      columnHelper.display({
+        id: "actions",
+        header: "التفاصيل",
+        cell: (info) => (
+          <a
+            href={info.row.original.link}
+            target="_blank"
+            rel="noreferrer"
+            // تصغير الزر والخط بداخله
+            className="inline-flex items-center justify-center gap-1.5 md:gap-2 bg-primary/10 hover:bg-primary text-primary hover:text-background font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl border border-primary/20 transition-all duration-300 shadow-sm whitespace-nowrap text-xs md:text-sm"
+            title="عرض الحساب"
+          >
+            <ExternalLink className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span>عرض الحساب</span>
+          </a>
+        ),
+      }),
+    ],
+    [],
   );
+
+  // TanStack Table Instance
+  const table = useReactTable({
+    data: filteredData,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+      pagination: {
+        pageSize: 10,
+      },
+    },
+  });
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 pb-16 space-y-12">
       <div className="flex items-center justify-between mb-6 px-2">
-        <h2 className="text-2xl font-bold text-white tracking-wide">
+        <h2 className="text-xl md:text-2xl font-bold text-white tracking-wide">
           أحدث الإعلانات
         </h2>
       </div>
 
-      {filteredAnnouncements.length === 0 ? (
+      {filteredData.length === 0 ? (
         <div className="text-center py-20 bg-secondary/50 rounded-2xl border border-white/5">
-          <p className="text-gray-400 text-lg">
+          <p className="text-gray-400 text-sm md:text-lg">
             لا توجد إعلانات مطابقة لعملية البحث وعملة الدفع المختارة.
           </p>
         </div>
       ) : (
         <div className="w-full rounded-2xl border border-white/5 bg-secondary/50 shadow-lg overflow-hidden">
-          <table className="w-full text-right text-sm">
-            <thead className="text-gray-400 bg-secondary/80 border-b border-white/5">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-5 font-bold text-center w-20"
-                >
-                  المنصة
-                </th>
-                <th scope="col" className="px-6 py-5 font-bold">
-                  العنوان (الإعلان)
-                </th>
-                <th scope="col" className="px-6 py-5 font-bold text-center">
-                  المتابعين
-                </th>
-                <th scope="col" className="px-6 py-5 font-bold text-center">
-                  سنة الإنشاء
-                </th>
-                <th scope="col" className="px-6 py-5 font-bold text-center">
-                  السعر
-                </th>
-                <th scope="col" className="px-6 py-5 font-bold text-center">
-                  التفاصيل
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedAnnouncements.map((announcement) => (
-                <tr
-                  key={announcement.id}
-                  className="border-bottom border-white/5 last:border-0 bg-secondary hover:bg-secondary/70 transition-all duration-200"
-                >
-                  <td className="px-6 py-5 text-center">
-                    <div
-                      className="inline-flex items-center justify-center bg-background p-2.5 rounded-lg border border-white/10 shadow-sm [&>svg]:w-5 [&>svg]:h-5"
-                      title={announcement.platformName.split(" - ")[0]}
-                    >
-                      {announcement.platformIcon}
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span
-                      className="font-medium text-white text-base max-w-xs block truncate"
-                      title={announcement.title}
-                    >
-                      {announcement.title}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5 text-center">
-                    <span
-                      className="font-mono text-gray-200 font-bold bg-white/5 px-2 py-1 rounded-md"
-                      dir="ltr"
-                    >
-                      {formatFollowers(announcement.followers)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5 text-center">
-                    <span className="font-mono text-gray-400">
-                      {announcement.account_created_at}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5 text-center">
-                    <span className="text-accent font-bold text-lg bg-accent/10 px-3 py-1 rounded-md whitespace-nowrap min-w-[100px] inline-block text-center">
-                      {getFormattedPrice(
-                        announcement.price,
-                        announcement.currency,
-                      )}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5 text-center">
-                    <a
-                      href={announcement.link}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary text-primary hover:text-background font-bold px-4 py-2.5 rounded-xl border border-primary/20 transition-all duration-300 shadow-sm whitespace-nowrap"
-                      title="عرض الحساب"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      <span>عرض الحساب</span>
-                    </a>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* حاوية الـ Scroll للموبايل */}
+          <div className="overflow-x-auto w-full">
+            {/* تقليل العرض الأدنى ليتناسب مع الخطوط الأصغر */}
+            <table className="w-full text-right text-xs md:text-sm min-w-[800px]">
+              <thead className="text-gray-400 bg-secondary/80 border-b border-white/5">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        scope="col"
+                        // تم إضافة الشرط هنا لتثبيت عمود العنوان وجعله لليمين
+                        className={`px-3 py-3 md:px-4 md:py-4 font-bold whitespace-nowrap ${
+                          header.column.id === "title"
+                            ? "text-right w-full"
+                            : "text-center"
+                        }`}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody>
+                {table.getRowModel().rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-white/5 last:border-0 bg-secondary hover:bg-secondary/70 transition-all duration-200"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td
+                        key={cell.id}
+                        // تم إضافة نفس الشرط هنا للمحاذاة
+                        className={`px-3 py-3 md:px-4 md:py-4 ${
+                          cell.column.id === "title"
+                            ? "text-right"
+                            : "text-center"
+                        }`}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      {totalPages > 1 && (
+      {/* أزرار التنقل (Pagination) */}
+      {table.getPageCount() > 1 && (
         <div className="flex justify-center items-center gap-2 mt-8">
           <button
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev - 1, totalPages))
-            }
-            disabled={currentPage === 1}
-            className="p-2 rounded-lg bg-secondary border border-white/5 text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            title="الصفحة التالية"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`w-10 h-10 rounded-lg font-mono font-bold transition-all ${
-                  currentPage === page
-                    ? "bg-accent text-background"
-                    : "bg-secondary border border-white/5 text-gray-400 hover:text-white hover:bg-white/10"
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-          </div>
-
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev + 1, 1))}
-            disabled={currentPage === totalPages}
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
             className="p-2 rounded-lg bg-secondary border border-white/5 text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             title="الصفحة السابقة"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+          </button>
+
+          <div className="flex items-center gap-1">
+            {Array.from({ length: table.getPageCount() }, (_, i) => i).map(
+              (pageIndex) => (
+                <button
+                  key={pageIndex}
+                  onClick={() => table.setPageIndex(pageIndex)}
+                  className={`w-8 h-8 md:w-10 md:h-10 text-xs md:text-sm rounded-lg font-mono font-bold transition-all ${
+                    table.getState().pagination.pageIndex === pageIndex
+                      ? "bg-accent text-background"
+                      : "bg-secondary border border-white/5 text-gray-400 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  {pageIndex + 1}
+                </button>
+              ),
+            )}
+          </div>
+
+          <button
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+            className="p-2 rounded-lg bg-secondary border border-white/5 text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            title="الصفحة التالية"
+          >
+            <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
           </button>
         </div>
       )}

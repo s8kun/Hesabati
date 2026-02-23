@@ -9,24 +9,30 @@ import {
 export interface SearchFilters {
   query: string;
   platform: string;
-  country: string;
   currency: string;
+  followersRange: [number, number];
+  priceRange: [number, number];
 }
+
+export type FilterUpdateValue = string | [number, number];
 
 interface FilterContextType {
   filters: SearchFilters;
-  updateFilter: (key: keyof SearchFilters, value: string) => void;
+  updateFilter: (key: keyof SearchFilters, value: FilterUpdateValue) => void;
+  setAllFilters: (newFilters: SearchFilters) => void;
   resetFilters: () => void;
   isFiltered: boolean;
   /** True if the IP detection has completed */
   detected: boolean;
+  defaultFilters: SearchFilters;
 }
 
 const defaultFilters: SearchFilters = {
   query: "",
   platform: "all",
-  country: "all",
   currency: "ALL",
+  followersRange: [0, 500000],
+  priceRange: [0, 10000],
 };
 
 const FilterContext = createContext<FilterContextType | null>(null);
@@ -69,8 +75,12 @@ export function FilterProvider({ children }: { children: ReactNode }) {
       .catch(() => setDetected(true));
   }, []);
 
-  const updateFilter = (key: keyof SearchFilters, value: string) => {
+  const updateFilter = (key: keyof SearchFilters, value: FilterUpdateValue) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const setAllFilters = (newFilters: SearchFilters) => {
+    setFilters(newFilters);
   };
 
   const resetFilters = () => setFilters(defaultFilters);
@@ -78,12 +88,23 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const isFiltered =
     filters.query !== "" ||
     filters.platform !== "all" ||
-    filters.country !== "all" ||
-    filters.currency !== "ALL";
+    filters.currency !== "ALL" ||
+    filters.followersRange[0] !== defaultFilters.followersRange[0] ||
+    filters.followersRange[1] !== defaultFilters.followersRange[1] ||
+    filters.priceRange[0] !== defaultFilters.priceRange[0] ||
+    filters.priceRange[1] !== defaultFilters.priceRange[1];
 
   return (
     <FilterContext.Provider
-      value={{ filters, updateFilter, resetFilters, isFiltered, detected }}
+      value={{
+        filters,
+        updateFilter,
+        setAllFilters,
+        resetFilters,
+        isFiltered,
+        detected,
+        defaultFilters,
+      }}
     >
       {children}
     </FilterContext.Provider>
