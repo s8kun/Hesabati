@@ -4,6 +4,8 @@ import Terms from "@/pages/Terms";
 import Contact from "@/pages/Contact";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
+import OTP from "@/pages/OTP";
+import ResetPassword from "@/pages/ResetPassword";
 
 function App() {
   return (
@@ -14,6 +16,8 @@ function App() {
       <Route path="/contact" element={<Contact />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Signup />} />
+      <Route path="/otp" element={<OTP />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
     </Routes>
   );
 }

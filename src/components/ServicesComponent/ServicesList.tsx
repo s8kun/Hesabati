@@ -531,7 +531,6 @@ export default function ServicesList() {
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
             className="p-2 rounded-lg bg-secondary border border-white/5 text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            title="الصفحة السابقة"
           >
             <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
           </button>
@@ -558,7 +557,6 @@ export default function ServicesList() {
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
             className="p-2 rounded-lg bg-secondary border border-white/5 text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            title="الصفحة التالية"
           >
             <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
           </button>
