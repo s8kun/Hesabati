@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router";
+import { ArrowRight } from "lucide-react";
 import useMeta from "../hooks/useMeta";
 
 export default function OTP() {
@@ -130,20 +131,7 @@ export default function OTP() {
             style={{ boxShadow: "0 0 20px rgba(212,175,55,0.25)" }}
           >
             تأكيد
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="rotate-180"
-            >
-              <path d="M5 12h14" />
-              <path d="m12 5 7 7-7 7" />
-            </svg>
+            <ArrowRight className="w-5 h-5" />
           </button>
 
           {/* Resend & Back Links */}

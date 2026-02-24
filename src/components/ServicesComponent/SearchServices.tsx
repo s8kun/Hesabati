@@ -18,14 +18,14 @@ const platforms = [
   { value: "x", label: "إكس (تويتر)" },
 ];
 
-const currencies = [
-  { value: "ALL", label: "كل العملات" },
-  { value: "USD", label: "USD ($)" },
-  { value: "LYD", label: "LYD (د.ل)" },
-  { value: "DZD", label: "DZD (د.ج)" },
-  { value: "SAR", label: "SAR (ر.س)" },
-  { value: "EGP", label: "EGP (ج.م)" },
-  { value: "AED", label: "AED (د.إ)" },
+const countries = [
+  { value: "ALL", label: "كل الدول" },
+  { value: "US", label: "دولي" },
+  { value: "LY", label: "ليبيا" },
+  { value: "DZ", label: "الجزائر" },
+  { value: "SA", label: "السعودية" },
+  { value: "EG", label: "مصر" },
+  { value: "AE", label: "الإمارات" },
 ];
 
 function formatNumber(num: number) {
@@ -69,7 +69,7 @@ export default function SearchServices() {
 
   const hasVisibleChips =
     filters.platform !== "all" ||
-    filters.currency !== "ALL" ||
+    filters.country !== "ALL" ||
     filters.followersRange[0] !== defaultFilters.followersRange[0] ||
     filters.followersRange[1] !== defaultFilters.followersRange[1] ||
     filters.priceRange[0] !== defaultFilters.priceRange[0] ||
@@ -162,13 +162,13 @@ export default function SearchServices() {
                 }
               />
             )}
-            {filters.currency !== "ALL" && (
+            {filters.country !== "ALL" && (
               <Chip
                 label={
-                  currencies.find((c) => c.value === filters.currency)?.label ??
+                  countries.find((c) => c.value === filters.country)?.label ??
                   ""
                 }
-                onRemove={() => updateFilter("currency", "ALL")}
+                onRemove={() => updateFilter("country", "ALL")}
               />
             )}
             <button
@@ -194,10 +194,10 @@ export default function SearchServices() {
                 options={platforms}
               />
               <FilterSelect
-                label="العملة"
-                value={localFilters.currency}
-                onChange={(v) => updateLocal("currency", v ?? "ALL")}
-                options={currencies}
+                label="الدولة"
+                value={localFilters.country}
+                onChange={(v) => updateLocal("country", v ?? "ALL")}
+                options={countries}
               />
             </div>
 

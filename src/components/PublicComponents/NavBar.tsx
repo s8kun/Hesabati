@@ -8,6 +8,7 @@ import {
   Youtube,
   Menu,
   X,
+  ArrowLeftRight,
 } from "lucide-react";
 import { Link, useLocation } from "react-router";
 
@@ -21,6 +22,11 @@ const navLinks = [
     title: "الشروط والأحكام",
     href: "/terms",
     icon: <ShieldAlert className="w-4 h-4" />,
+  },
+  {
+    title: "أسعار الصرف",
+    href: "/exchange-rates",
+    icon: <ArrowLeftRight className="w-4 h-4" />,
   },
   {
     title: "شروحات",

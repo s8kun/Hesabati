@@ -9,7 +9,7 @@ import {
 export interface SearchFilters {
   query: string;
   platform: string;
-  currency: string;
+  country: string;
   followersRange: [number, number];
   priceRange: [number, number];
 }
@@ -30,31 +30,17 @@ interface FilterContextType {
 const defaultFilters: SearchFilters = {
   query: "",
   platform: "all",
-  currency: "ALL",
+  country: "ALL",
   followersRange: [0, 500000],
   priceRange: [0, 10000],
 };
 
 const FilterContext = createContext<FilterContextType | null>(null);
 
-/** Map country code → local currency */
-function toCurrency(code: string): string {
-  switch (code) {
-    case "LY":
-      return "LYD";
-    case "DZ":
-      return "DZD";
-    case "SA":
-      return "SAR";
-    case "EG":
-      return "EGP";
-    case "AE":
-      return "AED";
-    case "US":
-      return "USD";
-    default:
-      return "ALL";
-  }
+const SUPPORTED_COUNTRIES = ["LY", "DZ", "SA", "EG", "AE", "US"];
+
+function toCountry(code: string): string {
+  return SUPPORTED_COUNTRIES.includes(code) ? code : "ALL";
 }
 
 export function FilterProvider({ children }: { children: ReactNode }) {
@@ -66,9 +52,9 @@ export function FilterProvider({ children }: { children: ReactNode }) {
     fetch("https://get.geojs.io/v1/ip/country.json")
       .then((r) => r.json())
       .then((data) => {
-        const currency = toCurrency(data.country ?? "");
-        if (currency !== "ALL") {
-          setFilters((prev) => ({ ...prev, currency }));
+        const country = toCountry(data.country ?? "");
+        if (country !== "ALL") {
+          setFilters((prev) => ({ ...prev, country }));
         }
         setDetected(true);
       })
@@ -88,7 +74,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const isFiltered =
     filters.query !== "" ||
     filters.platform !== "all" ||
-    filters.currency !== "ALL" ||
+    filters.country !== "ALL" ||
     filters.followersRange[0] !== defaultFilters.followersRange[0] ||
     filters.followersRange[1] !== defaultFilters.followersRange[1] ||
     filters.priceRange[0] !== defaultFilters.priceRange[0] ||
