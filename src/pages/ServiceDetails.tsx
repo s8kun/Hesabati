@@ -116,9 +116,6 @@ export default function ServiceDetails() {
                   <div className="text-lg font-bold text-white mb-1">
                     {service.seller.user.full_name}
                   </div>
-                  <div className="text-sm text-gray-400 font-mono" dir="ltr">
-                    ID: #{service.seller.id}
-                  </div>
                 </div>
                 {service.status !== "sold" && (
                   <div className="flex gap-3 w-full sm:w-auto">
