@@ -1,155 +1,192 @@
-import { useState, useRef } from "react";
-import { Link, useNavigate } from "react-router";
-import { ArrowRight } from "lucide-react";
+import {useState, useRef, useEffect} from "react";
+import {Link, useLocation, useNavigate} from "react-router";
+import {ArrowRight} from "lucide-react";
+import {useCookies} from "react-cookie";
 
 export default function OTPContent() {
-  const navigate = useNavigate();
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const navigate = useNavigate();
+    const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const location = useLocation();
+    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const [, setCookie] = useCookies(["token", "name"]);
+    useEffect(() => {
+        inputRefs.current[0]?.focus();
+    }, []);
 
-  const handleChange = (index: number, value: string) => {
-    // 1. معالجة حالة اللصق (Paste) أو اقتراح الموبايل لرمز كامل
-    if (value.length > 2) {
-      const pastedData = value.replace(/\D/g, "").slice(0, 6).split("");
-      if (pastedData.length === 0) return;
+    const handleChange = (index: number, value: string) => {
+        if (loading) return;
 
-      const newOtp = [...otp];
-      pastedData.forEach((char, i) => {
-        if (index + i < 6) newOtp[index + i] = char;
-      });
-      setOtp(newOtp);
+        const cleanValue = value.replace(/\D/g, "");
 
-      // نقل التركيز لآخر خانة فارغة
-      const nextIndex = Math.min(index + pastedData.length, 5);
-      inputRefs.current[nextIndex]?.focus();
+        // paste كامل
+        if (cleanValue.length > 1) {
+            const newOtp = [...otp];
+            cleanValue
+                .slice(0, 6)
+                .split("")
+                .forEach((char, i) => {
+                    if (index + i < 6) newOtp[index + i] = char;
+                });
 
-      // إرسال تلقائي إذا اكتملت الخانات
-      if (newOtp.every((v) => v !== "")) {
-        setTimeout(() => handleSubmit(newOtp.join("")), 150);
-      }
-      return;
-    }
+            setOtp(newOtp);
 
-    // 2. معالجة الإدخال العادي (نأخذ آخر حرف فقط حتى لو حاول المستخدم الكتابة فوق رقم موجود)
-    const digit = value.slice(-1);
-    if (digit !== "" && isNaN(Number(digit))) return;
+            const nextIndex = Math.min(index + cleanValue.length, 5);
+            inputRefs.current[nextIndex]?.focus();
 
-    const newOtp = [...otp];
-    newOtp[index] = digit;
-    setOtp(newOtp);
+            if (newOtp.every((v) => v !== "")) {
+                submitOtp(newOtp.join(""));
+            }
 
-    if (digit !== "") {
-      // نقل التركيز للخانة التالية
-      if (index < 5) {
-        inputRefs.current[index + 1]?.focus();
-      } else {
-        // إذا كانت الخانة الأخيرة، نقوم بإخفاء الكيبورد في الموبايل
-        inputRefs.current[index]?.blur();
-      }
+            return;
+        }
 
-      // 3. إرسال تلقائي بمجرد امتلاء كل الخانات (بدون شرط index === 5)
-      if (newOtp.every((v) => v !== "")) {
-        // استخدمنا setTimeout لكي يتمكن المستخدم من رؤية الرقم الأخير الذي أدخله قبل الانتقال
-        setTimeout(() => {
-          handleSubmit(newOtp.join(""));
-        }, 150);
-      }
-    }
-  };
+        const newOtp = [...otp];
+        newOtp[index] = cleanValue;
+        setOtp(newOtp);
 
-  const handleKeyDown = (
-    index: number,
-    e: React.KeyboardEvent<HTMLInputElement>,
-  ) => {
-    if (e.key === "Backspace" && otp[index] === "" && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
+        if (cleanValue && index < 5) {
+            inputRefs.current[index + 1]?.focus();
+        }
 
-  const handleSubmit = (code: string) => {
-    console.log("Auto-submitting OTP:", code);
-    navigate("/reset-password");
-  };
+        if (newOtp.every((v) => v !== "")) {
+            submitOtp(newOtp.join(""));
+        }
+    };
 
-  return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)] w-full bg-[#0e0e0e] p-4 sm:p-8 relative">
-      <div className="w-full max-w-lg bg-[#141414] border border-white/5 rounded-3xl p-8 sm:p-10 shadow-2xl relative overflow-hidden z-20">
-        {/* Decorative glow */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
+    const handleKeyDown = (
+        index: number,
+        e: React.KeyboardEvent<HTMLInputElement>,
+    ) => {
+        if (e.key === "Backspace") {
+            if (otp[index] === "" && index > 0) {
+                inputRefs.current[index - 1]?.focus();
+            }
+        }
+    };
 
-        <form
-          className="relative z-10 flex flex-col items-center justify-center w-full"
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSubmit(otp.join(""));
-          }}
-        >
-          <h2 className="text-3xl font-bold text-white mb-2 tracking-tight text-center">
-            تأكيد الرمز
-          </h2>
+    const submitOtp = async (code: string) => {
+        if (code.length !== 6) return;
 
-          <p className="text-sm text-gray-400 mb-8 text-center leading-relaxed">
-            لقد أرسلنا رمز تحقق مكون من 6 أرقام إلى بريدك الإلكتروني. الرجاء
-            إدخاله أدناه.
-          </p>
+        try {
+            setLoading(true);
+            setError("");
 
-          {/* OTP Input Boxes */}
-          <div className="w-full mb-8 text-right" dir="ltr">
-            <div className="flex items-center justify-between gap-2 sm:gap-4">
-              {otp.map((digit, index) => (
-                <input
-                  key={index}
-                  ref={(el) => {
-                    inputRefs.current[index] = el;
-                  }}
-                  type="text"
-                  inputMode="numeric"
-                  // 4. جعلنا maxLength=6 لكي يقبل الموبايل لصق الـ 6 أرقام مرة واحدة عند اقتراحها
-                  maxLength={6}
-                  value={digit}
-                  onChange={(e) => handleChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  // 5. يسهل تغيير الرقم عند النقر عليه بدلاً من مسحه أولاً
-                  onFocus={(e) => e.target.select()}
-                  className="w-12 h-14 sm:w-14 sm:h-16 bg-black/50 border border-white/10 rounded-xl text-center text-xl sm:text-2xl font-mono text-accent font-bold focus:border-accent focus:ring-1 focus:ring-accent transition-all outline-none"
-                />
-              ))}
+            const response = await fetch(
+                `${import.meta.env.VITE_BACKEND_URL}/verify_otp/`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json",
+                    },
+                    body: JSON.stringify({
+                        email: location.state?.email,
+                        code,
+                    }),
+                },
+            );
+
+            const result = await response.json();
+            console.log(result);
+            setCookie("token", result.access_token, {path: "/services"});
+            setCookie("name", result.full_name, {path: "/services"});
+
+
+            if (!response.ok) {
+                throw new Error(result.message || "رمز غير صحيح");
+            }
+
+            // ✅ نجاح
+            navigate("/services", {replace: true});
+        } catch (err: any) {
+            setError(err.message || "حدث خطأ");
+            setOtp(Array(6).fill(""));
+            inputRefs.current[0]?.focus();
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const resendOtp = async () => {
+        try {
+            setLoading(true);
+
+            await fetch(`${import.meta.env.VITE_BACKEND_URL}/verify_otp/`, {
+                method: "POST",
+                headers: {
+                    Accept: "application/json",
+                },
+            });
+        } catch (err) {
+            console.log("Resend error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-[#0e0e0e] p-6">
+            <div className="w-full max-w-md bg-[#141414] p-8 rounded-3xl shadow-2xl border border-white/5">
+                <h2 className="text-3xl font-bold text-white text-center mb-3">
+                    تأكيد الرمز
+                </h2>
+
+                <p className="text-gray-400 text-center mb-8 text-sm">
+                    أدخل رمز التحقق المكون من 6 أرقام
+                </p>
+
+                <div className="flex justify-between gap-3 mb-6" dir="ltr">
+                    {otp.map((digit, index) => (
+                        <input
+                            key={index}
+                            ref={(el) => (inputRefs.current[index] = el)}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            value={digit}
+                            onChange={(e) => handleChange(index, e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(index, e)}
+                            onFocus={(e) => e.target.select()}
+                            disabled={loading}
+                            className="w-12 h-14 text-center text-2xl font-bold bg-black/50 border border-white/10 rounded-xl text-accent focus:ring-1 focus:ring-accent outline-none"
+                        />
+                    ))}
+                </div>
+
+                {error && (
+                    <p className="text-red-500 text-sm text-center mb-4">{error}</p>
+                )}
+
+                <button
+                    disabled={otp.some((v) => v === "") || loading}
+                    onClick={() => submitOtp(otp.join(""))}
+                    className="w-full h-12 bg-accent text-black font-bold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2 mb-6"
+                >
+                    {loading ? "جاري التحقق..." : "تأكيد"}
+                    <ArrowRight size={18}/>
+                </button>
+
+                <div className="text-center space-y-3">
+                    <button
+                        onClick={resendOtp}
+                        disabled={loading}
+                        className="text-sm text-white hover:text-accent transition"
+                    >
+                        إعادة إرسال الرمز
+                    </button>
+
+                    <div>
+                        <Link
+                            to="/login"
+                            className="text-sm text-gray-500 hover:text-white"
+                        >
+                            العودة لتسجيل الدخول
+                        </Link>
+                    </div>
+                </div>
             </div>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={otp.some((v) => v === "")}
-            className="w-full h-12 rounded-xl font-bold text-black bg-accent disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent/90 transition-all shadow-lg flex items-center justify-center gap-2 mb-6"
-            style={{ boxShadow: "0 0 20px rgba(212,175,55,0.25)" }}
-          >
-            تأكيد
-            <ArrowRight className="w-5 h-5" />
-          </button>
-
-          {/* Resend & Back Links */}
-          <div className="flex flex-col items-center gap-3">
-            <p className="text-sm text-gray-400">
-              لم تستلم الرمز؟{" "}
-              <button
-                type="button"
-                className="font-bold text-white hover:text-accent transition-colors"
-                onClick={() => console.log("Resend OTP")}
-              >
-                إعادة إرسال
-              </button>
-            </p>
-
-            <Link
-              to="/login"
-              className="text-sm text-gray-500 hover:text-white transition-colors"
-            >
-              العودة لتسجيل الدخول
-            </Link>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+        </div>
+    );
 }

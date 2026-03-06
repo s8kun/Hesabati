@@ -1,455 +1,189 @@
-import type { ReactNode } from "react";
-import { Facebook, Instagram, Twitter, Youtube } from "lucide-react";
+import type {ReactNode} from "react";
+import {useState, useEffect} from "react";
+import {Facebook, Instagram, Twitter, Youtube} from "lucide-react";
 
+const DEFAULT_PAGE_SIZE = 10;
+
+const TikTokIcon = ({className}: { className?: string }) => (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path
+            d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.04-.1z"/>
+    </svg>
+);
+
+// 2. تحديث الـ Types لتطابق الـ API
 export type Seller = {
-  id: number;
-  user: { full_name: string };
-  whatsapp: string;
-  telegrame: string;
+    email: string;
+    description: string;
+    whatsapp: string;
+    country: {
+        name: string;
+        currency_code: string;
+        currency_name: string;
+        rate_to_usd: string;
+    };
 };
 
 export type Announcement = {
-  id: number;
-  title: string;
-  description: string;
-  price_original: number;
-  price_usd: number;
-  country: string;
-  followers: number;
-  account_created_at: string;
-  seller: Seller;
-  status: string;
-  created_at: string;
-  account_link: string;
+    id: number;
+    title: string;
+    description: string;
+    price_original: string;
+    price_usd: string;
+    followers: number;
+    account_created_at: string;
+    status: string;
+    created_at: string;
+    account_link: string;
+    category: string;
+    seller: Seller;
 };
 
 export type PlatformData = {
-  category: string;
-  icon: ReactNode;
-  announcements: Announcement[];
+    category: string;
+    icon: ReactNode;
+    announcements: Announcement[];
 };
 
-export const platformsData: PlatformData[] = [
-  {
-    category: "انستقرام - Instagram",
-    icon: <Instagram className="w-6 h-6 text-pink-500" />,
-    announcements: [
-      {
-        id: 1,
-        title: "حساب انستقرام 10K متابع متفاعل",
-        description: "وصف الإعلان",
-        price_original: 45.0,
-        price_usd: 45.0,
-        country: "US",
-        followers: 10500,
-        account_created_at: "2020",
-        seller: {
-          id: 1,
-          user: { full_name: "أحمد" },
-          whatsapp: "+218910000000",
-          telegrame: "@أحمد_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-      {
-        id: 2,
-        title: "حساب انستقرام 50K متابع حقيقي",
-        description: "وصف الإعلان",
-        price_original: 840.0,
-        price_usd: 168.0,
-        country: "LY",
-        followers: 50000,
-        account_created_at: "2018",
-        seller: {
-          id: 2,
-          user: { full_name: "عمر" },
-          whatsapp: "+218920000000",
-          telegrame: "@عمر_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-      {
-        id: 3,
-        title: "حساب انستقرام - 5K متابع",
-        description: "وصف الإعلان",
-        price_original: 5000.0,
-        price_usd: 1000.0,
-        country: "DZ",
-        followers: 5000,
-        account_created_at: "2023",
-        seller: {
-          id: 3,
-          user: { full_name: "سالم" },
-          whatsapp: "+218940000000",
-          telegrame: "@سالم_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-      {
-        id: 10,
-        title: "حساب مميز نيتش طبخ 20K متابع",
-        description: "وصف الإعلان",
-        price_original: 90.0,
-        price_usd: 90.0,
-        country: "US",
-        followers: 21000,
-        account_created_at: "2021",
-        seller: {
-          id: 10,
-          user: { full_name: "فاطمة" },
-          whatsapp: "+218911111111",
-          telegrame: "@فاطمة_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-      {
-        id: 11,
-        title: "انستغرام 100K نشط جدا خليجي",
-        description: "وصف الإعلان",
-        price_original: 350.0,
-        price_usd: 350.0,
-        country: "US",
-        followers: 102000,
-        account_created_at: "2017",
-        seller: {
-          id: 11,
-          user: { full_name: "يوسف" },
-          whatsapp: "+218922222222",
-          telegrame: "@يوسف_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-      {
-        id: 12,
-        title: "حساب شخصي 3K متابع - توثيق قديم",
-        description: "وصف الإعلان",
-        price_original: 150.0,
-        price_usd: 30.0,
-        country: "LY",
-        followers: 3200,
-        account_created_at: "2015",
-        seller: {
-          id: 12,
-          user: { full_name: "خالد" },
-          whatsapp: "+218933333333",
-          telegrame: "@خالد_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-      {
-        id: 13,
-        title: "حساب انستقرام أجنبي 15K",
-        description: "وصف الإعلان",
-        price_original: 120.0,
-        price_usd: 120.0,
-        country: "US",
-        followers: 15500,
-        account_created_at: "2022",
-        seller: {
-          id: 13,
-          user: { full_name: "سمير" },
-          whatsapp: "+218944444444",
-          telegrame: "@سمير_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-    ],
-  },
-  {
-    category: "فيسبوك - Facebook",
-    icon: <Facebook className="w-6 h-6 text-blue-500" />,
-    announcements: [
-      {
-        id: 4,
-        title: "صفحة فيسبوك 100K متابع نشط",
-        description: "وصف الإعلان",
-        price_original: 1500.0,
-        price_usd: 300.0,
-        country: "EG",
-        followers: 100000,
-        account_created_at: "2018",
-        seller: {
-          id: 4,
-          user: { full_name: "محمد" },
-          whatsapp: "+218920000000",
-          telegrame: "@محمد_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-      {
-        id: 5,
-        title: "حساب فيسبوك شخصي قديم (2010)",
-        description: "وصف الإعلان",
-        price_original: 70.0,
-        price_usd: 14.0,
-        country: "LY",
-        followers: 1500,
-        account_created_at: "2010",
-        seller: {
-          id: 5,
-          user: { full_name: "أحمد" },
-          whatsapp: "+218910000000",
-          telegrame: "@أحمد_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-      {
-        id: 14,
-        title: "جروب فيسبوك 50K عضو متفاعل",
-        description: "وصف الإعلان",
-        price_original: 250.0,
-        price_usd: 250.0,
-        country: "US",
-        followers: 52000,
-        account_created_at: "2019",
-        seller: {
-          id: 14,
-          user: { full_name: "طارق" },
-          whatsapp: "+218955555555",
-          telegrame: "@طارق_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-      {
-        id: 15,
-        title: "صفحة تجارية جاهزة للإعلانات",
-        description: "وصف الإعلان",
-        price_original: 300.0,
-        price_usd: 60.0,
-        country: "LY",
-        followers: 8000,
-        account_created_at: "2020",
-        seller: {
-          id: 15,
-          user: { full_name: "مصطفى" },
-          whatsapp: "+218966666666",
-          telegrame: "@مصطفى_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-      {
-        id: 16,
-        title: "حساب مطور فيسبوك قديم 2008",
-        description: "وصف الإعلان",
-        price_original: 100.0,
-        price_usd: 100.0,
-        country: "US",
-        followers: 500,
-        account_created_at: "2008",
-        seller: {
-          id: 16,
-          user: { full_name: "حسين" },
-          whatsapp: "+218977777777",
-          telegrame: "@حسين_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-    ],
-  },
-  {
-    category: "يوتيوب - YouTube",
-    icon: <Youtube className="w-6 h-6 text-red-500" />,
-    announcements: [
-      {
-        id: 6,
-        title: "قناة يوتيوب مفعلة الدخل (1K مشترك)",
-        description: "وصف الإعلان",
-        price_original: 550.0,
-        price_usd: 110.0,
-        country: "SA",
-        followers: 1500,
-        account_created_at: "2021",
-        seller: {
-          id: 6,
-          user: { full_name: "سالم" },
-          whatsapp: "+218940000000",
-          telegrame: "@سالم_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-      {
-        id: 7,
-        title: "قناة يوتيوب 10K مشترك (بدون دخل)",
-        description: "وصف الإعلان",
-        price_original: 90.0,
-        price_usd: 90.0,
-        country: "US",
-        followers: 10000,
-        account_created_at: "2018",
-        seller: {
-          id: 7,
-          user: { full_name: "علي" },
-          whatsapp: "+218910000000",
-          telegrame: "@علي_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-      {
-        id: 17,
-        title: "قناة يوتيوب جيمنج 50K مشترك وتحقيق أرباح",
-        description: "وصف الإعلان",
-        price_original: 1200.0,
-        price_usd: 1200.0,
-        country: "US",
-        followers: 51000,
-        account_created_at: "2016",
-        seller: {
-          id: 17,
-          user: { full_name: "بدر" },
-          whatsapp: "+218988888888",
-          telegrame: "@بدر_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-      {
-        id: 18,
-        title: "قناة شورتس مشاهدات عالية 5K",
-        description: "وصف الإعلان",
-        price_original: 200.0,
-        price_usd: 40.0,
-        country: "LY",
-        followers: 5500,
-        account_created_at: "2023",
-        seller: {
-          id: 18,
-          user: { full_name: "نور" },
-          whatsapp: "+218999999999",
-          telegrame: "@نور_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-    ],
-  },
-  {
-    category: "اكس (تويتر) - X",
-    icon: <Twitter className="w-6 h-6 text-white" />,
-    announcements: [
-      {
-        id: 8,
-        title: "حساب إكس موثق (العلامة الزرقاء)",
-        description: "وصف الإعلان",
-        price_original: 310.0,
-        price_usd: 62.0,
-        country: "AE",
-        followers: 5000,
-        account_created_at: "2015",
-        seller: {
-          id: 8,
-          user: { full_name: "علي" },
-          whatsapp: "+218910000000",
-          telegrame: "@علي_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-      {
-        id: 9,
-        title: "حساب تويتر 20K متابع متفاعل",
-        description: "وصف الإعلان",
-        price_original: 420.0,
-        price_usd: 84.0,
-        country: "LY",
-        followers: 20000,
-        account_created_at: "2019",
-        seller: {
-          id: 9,
-          user: { full_name: "عمر" },
-          whatsapp: "+218920000000",
-          telegrame: "@عمر_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-      {
-        id: 19,
-        title: "إكس 100K تفاعل رياضي نار",
-        description: "وصف الإعلان",
-        price_original: 800.0,
-        price_usd: 800.0,
-        country: "US",
-        followers: 105000,
-        account_created_at: "2014",
-        seller: {
-          id: 19,
-          user: { full_name: "مالك" },
-          whatsapp: "+218912345678",
-          telegrame: "@مالك_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-      {
-        id: 20,
-        title: "حساب مميز جدا حرفين",
-        description: "وصف الإعلان",
-        price_original: 5000.0,
-        price_usd: 5000.0,
-        country: "US",
-        followers: 1200,
-        account_created_at: "2011",
-        seller: {
-          id: 20,
-          user: { full_name: "تركي" },
-          whatsapp: "+218987654321",
-          telegrame: "@تركي_tg",
-        },
-        status: "active",
-        created_at: "2024-01-01T10:00:00Z",
-        account_link: "#",
-      },
-    ],
-  },
-];
+type PaginatedAnnouncementsResponse = {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: Announcement[];
+};
 
-export const getServiceById = (
-  id: number,
-):
-  | (Announcement & { platformName: string; platformIcon: ReactNode })
-  | undefined => {
-  for (const platform of platformsData) {
-    const ann = platform.announcements.find((a) => a.id === id);
-    if (ann) {
-      return {
-        ...ann,
-        platformName: platform.category,
-        platformIcon: platform.icon,
-      };
+export type MarketplaceMeta = {
+    count: number;
+    pageSize: number;
+    totalPages: number;
+    currentPage: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+};
+
+// 3. دالة تحديد الأيقونة والاسم (Switch)
+const getCategoryMeta = (categoryName: string): { title: string; icon: ReactNode } => {
+    switch (categoryName.toLowerCase()) {
+        case "tiktok":
+            return {title: "تيك توك - TikTok", icon: <TikTokIcon className="w-6 h-6 text-black dark:text-white"/>};
+        case "instagram":
+            return {title: "انستقرام - Instagram", icon: <Instagram className="w-6 h-6 text-pink-500"/>};
+        case "facebook":
+            return {title: "فيسبوك - Facebook", icon: <Facebook className="w-6 h-6 text-blue-500"/>};
+        case "youtube":
+            return {title: "يوتيوب - YouTube", icon: <Youtube className="w-6 h-6 text-red-500"/>};
+        case "x":
+        case "twitter":
+            return {title: "اكس (تويتر) - X", icon: <Twitter className="w-6 h-6 text-gray-800 dark:text-gray-200"/>};
+        default:
+            return {title: categoryName, icon: null};
     }
-  }
-  return undefined;
+};
+
+// 4. دالة البحث عن الخدمة (تستقبل البيانات كمعامل)
+export const getServiceById = (
+    id: number,
+    platformsData: PlatformData[]
+): (Announcement & { platformName: string; platformIcon: ReactNode }) | undefined => {
+    for (const platform of platformsData) {
+        const ann = platform.announcements.find((a) => a.id === id);
+        if (ann) {
+            return {
+                ...ann,
+                platformName: platform.category,
+                platformIcon: platform.icon,
+            };
+        }
+    }
+    return undefined;
+};
+
+// 5. الـ Hook الأساسي اللي بتستدعيه في الـ Components بتاعك
+export const useMarketplaceData = (page: number = 1, pageSize: number = DEFAULT_PAGE_SIZE) => {
+    const [platformsData, setPlatformsData] = useState<PlatformData[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [meta, setMeta] = useState<MarketplaceMeta>({
+        count: 0,
+        pageSize,
+        totalPages: 0,
+        currentPage: page,
+        hasNextPage: false,
+        hasPreviousPage: false,
+    });
+
+    useEffect(() => {
+        const abortController = new AbortController();
+
+        const fetchAnnouncements = async () => {
+            setIsLoading(true);
+            setError(null);
+
+            try {
+                const baseUrl = import.meta.env.VITE_BACKEND_URL;
+                if (!baseUrl) {
+                    throw new Error("VITE_BACKEND_URL is not configured");
+                }
+
+                const url = new URL(baseUrl);
+                url.searchParams.set("page", String(page));
+                url.searchParams.set("page_size", String(pageSize));
+
+                const response = await fetch(url.toString(), {signal: abortController.signal});
+                if (!response.ok) {
+                    throw new Error(`Request failed with status ${response.status}`);
+                }
+
+                const json = (await response.json()) as PaginatedAnnouncementsResponse;
+
+                const resolvedPageSize = pageSize > 0 ? pageSize : DEFAULT_PAGE_SIZE;
+                const totalPages = json.count > 0 ? Math.ceil(json.count / resolvedPageSize) : 0;
+
+                const grouped = json.results.reduce((acc: Record<string, PlatformData>, announcement: Announcement) => {
+                    const meta = getCategoryMeta(announcement.category);
+                    if (!acc[meta.title]) {
+                        acc[meta.title] = {category: meta.title, icon: meta.icon, announcements: []};
+                    }
+                    acc[meta.title].announcements.push(announcement);
+                    return acc;
+                }, {});
+
+                setPlatformsData(Object.values(grouped));
+                setMeta({
+                    count: json.count,
+                    pageSize: resolvedPageSize,
+                    totalPages,
+                    currentPage: page,
+                    hasNextPage: json.next !== null,
+                    hasPreviousPage: json.previous !== null,
+                });
+            } catch (error) {
+                if (error instanceof DOMException && error.name === "AbortError") {
+                    return;
+                }
+
+                console.error("Error fetching announcements:", error);
+                setPlatformsData([]);
+                setMeta((prev) => ({...prev, totalPages: 0, hasNextPage: false, hasPreviousPage: false}));
+                setError(error instanceof Error ? error.message : "Failed to load announcements");
+            } finally {
+                if (!abortController.signal.aborted) {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        fetchAnnouncements();
+
+        return () => {
+            abortController.abort();
+        };
+    }, [page, pageSize]); // إعادة الجلب كلما تغيرت الصفحة
+
+    return {
+        platformsData,
+        isLoading,
+        error,
+        meta,
+    };
 };
