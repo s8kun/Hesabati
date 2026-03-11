@@ -15,7 +15,7 @@ export default function AnnouncementEditorHeader({
         <div className="max-w-2xl">
           <Link
             to="/profile"
-            className="mb-5 absolute right-0 inline-flex items-center gap-2 text-sm font-semibold text-gray-400 transition hover:text-white"
+            className="mb-5 lg:absolute right-0 inline-flex items-center gap-2 text-sm font-semibold text-gray-400 transition hover:text-white"
           >
             <ArrowRight className="h-4 w-4" />
             العودة إلى الملف الشخصي

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router";
-import { useExchangeRate } from "../../context/ExchangeRateContext";
-import { useFilters } from "../../context/FilterContext";
+
 import useMeta from "../../hooks/useMeta";
 import {
   ArrowRight,
@@ -86,8 +85,6 @@ type ServiceDetails = {
 
 export default function ServiceDetailsContent() {
   const { id } = useParams<{ id: string }>();
-  const { convertPrice } = useExchangeRate();
-  const { filters } = useFilters();
 
   const [service, setService] = useState<ServiceDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -187,11 +184,6 @@ export default function ServiceDetailsContent() {
     );
   }
 
-  const localPrice = convertPrice(
-    service.price_original,
-    filters.countryId || "",
-  );
-
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] w-full flex-col bg-[#0e0e0e] px-4 py-8 sm:px-8">
       <div className="flex h-full w-full flex-1 flex-col">
@@ -236,7 +228,8 @@ export default function ServiceDetailsContent() {
                     className="rounded-xl bg-accent/10 px-6 py-2 text-4xl font-bold text-accent"
                     dir="ltr"
                   >
-                    {localPrice.amount.toFixed(2)} {localPrice.symbol}
+                    {service.price_original}{" "}
+                    {service.seller.country.currency_code}
                   </span>
                 </div>
 
