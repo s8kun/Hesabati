@@ -1,246 +1,461 @@
-import {useState} from "react";
-import {Link, useNavigate} from "react-router";
-import {User, Mail, Lock, ArrowRight, Eye, EyeOff} from "lucide-react";
-import {useForm} from "react-hook-form";
-import {Input} from "@/components/ui/input";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router";
+import {
+  User,
+  Mail,
+  Lock,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Phone,
+  MapPin,
+} from "lucide-react";
+import { Controller, useForm } from "react-hook-form";
+import { Input } from "@/components/ui/input";
+import {
+  getApiMessageInArabic,
+  getErrorMessageInArabic,
+  showErrorToast,
+  showSuccessToast,
+} from "@/lib/toast";
+import { useMarketplaceMeta } from "@/context/MarketplaceMetaContext";
+import { apiFetch, apiFetchJson, safeParseJson } from "@/lib/apiFetch";
+import {
+  Select,
+  SelectItem,
+  SelectPopup,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface SignupInputs {
-    full_name: string;
-    email: string;
-    password: string;
-    confirm_password: string;
+  full_name: string;
+  email: string;
+  country: string;
+  whatsapp: string;
+  password: string;
+  password_confirm: string;
 }
 
+type CountriesMetaResponse = {
+  countries?: Array<{
+    id: number;
+    name: string;
+    currency_code?: string;
+    currency_name?: string;
+    rate_to_usd?: string;
+  }>;
+};
+
 export default function SignupContent() {
-    const {
-        register,
-        handleSubmit,
-        watch,
-        formState: {errors},
-    } = useForm<SignupInputs>();
-    const navigate = useNavigate();
+  const { countries, setCountries } = useMarketplaceMeta();
+  const navigate = useNavigate();
 
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const onSubmit = async (data: SignupInputs) => {
-        try {
-            const response = await fetch(
-                `${import.meta.env.VITE_BACKEND_URL}/register/`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Accept: "application/json",
-                    },
-                    body: JSON.stringify(data),
-                },
-            );
+  const {
+    register,
+    control,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<SignupInputs>({
+    defaultValues: {
+      full_name: "",
+      email: "",
+      country: "",
+      whatsapp: "",
+      password: "",
+      password_confirm: "",
+    },
+  });
 
-            const result = await response.json();
-            console.log("Server response:", result);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-            if (!response.ok) {
-                console.log("Validation errors:", result);
-                throw new Error("Request failed");
-            }
-            if (response.ok) {
-                console.log("Success:", result);
-                navigate("/otp", {
-                    state: {email: data.email},
-                });
-            }
-        } catch (error: any) {
-            console.error("Signup error:", error.message);
+  const selectedCountryName =
+    countries.find((country) => String(country.id) === watch("country"))
+      ?.name || "";
+
+  useEffect(() => {
+    if (countries.length > 0) return;
+
+    const abortController = new AbortController();
+
+    const fetchCountries = async () => {
+      try {
+        const baseUrl = import.meta.env.VITE_BACKEND_URL;
+        if (!baseUrl) {
+          throw new Error("VITE_BACKEND_URL is not configured");
         }
+
+        const url = new URL(baseUrl);
+        url.searchParams.set("page", "1");
+        url.searchParams.set("page_size", "1");
+
+        const response = await apiFetch(url.toString(), {
+          auth: false,
+          signal: abortController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+
+        const json = await safeParseJson<CountriesMetaResponse>(response);
+
+        if (json.countries) {
+          setCountries(json.countries);
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        console.error("Failed to load countries for signup:", error);
+      }
     };
 
-    return (
-        <div className="flex min-h-[calc(100vh-3.5rem)] w-full bg-[#0e0e0e]">
-            {/* Right Side (Form) */}
-            <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 lg:p-12 relative z-20">
+    fetchCountries();
+
+    return () => {
+      abortController.abort();
+    };
+  }, [countries.length, setCountries]);
+
+  const onSubmit = async (data: SignupInputs) => {
+    console.log("Submitting signup form with data:", data);
+    try {
+      const payload = {
+        ...data,
+        country: Number(data.country),
+        whatsapp: data.whatsapp.trim(),
+      };
+
+      const { response, data: result } = await apiFetchJson<
+        Record<string, unknown>
+      >("/register/", {
+        method: "POST",
+        auth: false,
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        console.error("Signup failed:", result);
+        throw new Error(
+          getApiMessageInArabic(
+            result,
+            "تعذّر إنشاء الحساب الآن، تأكد من البيانات ثم حاول مجددًا.",
+          ),
+        );
+      }
+
+      showSuccessToast(
+        getApiMessageInArabic(
+          result,
+          "تم إنشاء حسابك بنجاح، بقيت خطوة واحدة لتفعيل الحساب.",
+        ),
+      );
+
+      navigate("/otp", {
+        state: { email: data.email },
+      });
+    } catch (error: unknown) {
+      showErrorToast(
+        getErrorMessageInArabic(error, "حدث خطأ غير متوقع أثناء إنشاء الحساب."),
+      );
+    }
+  };
+
+  return (
+    <div className="flex min-h-[calc(100vh-3.5rem)] w-full bg-[#0e0e0e]">
+      <div className="relative z-20 flex w-full flex-col items-center justify-center p-4 sm:p-8 lg:w-1/2 lg:p-12">
+        <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/5 bg-[#141414] p-8 shadow-2xl sm:p-10">
+          <div className="pointer-events-none absolute top-0 right-0 -mt-32 -mr-32 h-64 w-64 rounded-full bg-accent/5 blur-3xl" />
+
+          <form
+            className="relative z-10 flex w-full flex-col items-center justify-center"
+            onSubmit={handleSubmit(onSubmit)}
+          >
+            <h2 className="mb-2 text-3xl font-bold tracking-tight text-white">
+              إنشاء حساب جديد
+            </h2>
+
+            <p className="mb-8 text-center text-sm leading-relaxed text-gray-400">
+              انضم إلينا الآن للوصول إلى آلاف الحسابات الجاهزة!
+            </p>
+
+            <div className="mb-5 w-full space-y-2 text-right">
+              <label className="text-sm font-semibold tracking-wide text-gray-300">
+                الاسم الكامل
+              </label>
+
+              <div
+                className="flex h-12 w-full items-center gap-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] px-4 transition-all focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
+                dir="ltr"
+              >
+                <User className="h-5 w-5 shrink-0 text-gray-500" />
+
+                <Input
+                  type="text"
+                  placeholder="Ali Ahmed"
+                  className="h-full w-full border-0 bg-transparent text-left text-white outline-none placeholder:text-gray-600 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  {...register("full_name", {
+                    required: "الاسم الكامل مطلوب",
+                  })}
+                />
+              </div>
+
+              {errors.full_name && (
+                <p className="text-sm text-red-500">
+                  {errors.full_name.message}
+                </p>
+              )}
+            </div>
+
+            <div className="mb-5 w-full space-y-2 text-right">
+              <label className="text-sm font-semibold tracking-wide text-gray-300">
+                البريد الإلكتروني
+              </label>
+
+              <div
+                className="flex h-12 w-full items-center gap-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] px-4 transition-all focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
+                dir="ltr"
+              >
+                <Mail className="h-5 w-5 shrink-0 text-gray-500" />
+
+                <Input
+                  type="email"
+                  placeholder="example@email.com"
+                  className="h-full w-full border-0 bg-transparent text-left text-white outline-none placeholder:text-gray-600 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  {...register("email", {
+                    required: "البريد الإلكتروني مطلوب",
+                    pattern: {
+                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                      message: "البريد الإلكتروني غير صحيح",
+                    },
+                  })}
+                />
+              </div>
+
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email.message}</p>
+              )}
+            </div>
+
+            <div className="mb-5 w-full space-y-2 text-right">
+              <label className="text-sm font-semibold tracking-wide text-gray-300">
+                الدولة
+              </label>
+
+              <div dir="ltr">
                 <div
-                    className="w-full max-w-md bg-[#141414] border border-white/5 rounded-3xl p-8 sm:p-10 shadow-2xl relative overflow-hidden">
-                    <div
-                        className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"/>
-
-                    <form
-                        className="relative z-10 flex flex-col items-center justify-center w-full"
-                        onSubmit={handleSubmit(onSubmit)}
-                    >
-                        <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">
-                            إنشاء حساب جديد
-                        </h2>
-                        <p className="text-sm text-gray-400 mb-8 text-center leading-relaxed">
-                            انضم إلينا الآن للوصول إلى آلاف الحسابات الجاهزة!
-                        </p>
-
-                        {/* Full Name Input */}
-                        <div className="w-full space-y-2 mb-5 text-right">
-                            <label className="text-sm font-semibold text-gray-300 tracking-wide">
-                                الاسم الكامل
-                            </label>
-                            <div
-                                className="flex items-center w-full bg-black/50 border border-white/10 h-12 rounded-xl overflow-hidden px-4 gap-3 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent transition-all"
-                                dir="ltr"
-                            >
-                                <User className="w-5 h-5 text-gray-500 shrink-0"/>
-                                <Input
-                                    type="text"
-                                    placeholder="Ali Ahmed"
-                                    className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-white placeholder:text-gray-600 outline-none w-full h-full text-left"
-                                    {...register("full_name", {required: "الاسم الكامل مطلوب"})}
-                                />
-                            </div>
-                            {errors.full_name && (
-                                <p className="text-red-500 text-sm">
-                                    {errors.full_name.message}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Email Input */}
-                        <div className="w-full space-y-2 mb-5 text-right">
-                            <label className="text-sm font-semibold text-gray-300 tracking-wide">
-                                البريد الإلكتروني
-                            </label>
-                            <div
-                                className="flex items-center w-full bg-black/50 border border-white/10 h-12 rounded-xl overflow-hidden px-4 gap-3 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent transition-all"
-                                dir="ltr"
-                            >
-                                <Mail className="w-5 h-5 text-gray-500 shrink-0"/>
-                                <Input
-                                    type="email"
-                                    placeholder="example@email.com"
-                                    className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-white placeholder:text-gray-600 outline-none w-full h-full text-left"
-                                    {...register("email", {
-                                        required: "البريد الإلكتروني مطلوب",
-                                        pattern: {
-                                            value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                                            message: "البريد الإلكتروني غير صحيح",
-                                        },
-                                    })}
-                                />
-                            </div>
-                            {errors.email && (
-                                <p className="text-red-500 text-sm">{errors.email.message}</p>
-                            )}
-                        </div>
-
-                        {/* Password Input */}
-                        <div className="w-full space-y-2 mb-5 text-right">
-                            <label className="text-sm font-semibold text-gray-300 tracking-wide">
-                                كلمة المرور
-                            </label>
-                            <div
-                                className="flex items-center w-full bg-black/50 border border-white/10 h-12 rounded-xl overflow-hidden px-4 gap-3 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent transition-all"
-                                dir="ltr"
-                            >
-                                <Lock className="w-5 h-5 text-gray-500 shrink-0"/>
-                                <Input
-                                    type={showPassword ? "text" : "password"}
-                                    placeholder="••••••••"
-                                    className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-white placeholder:text-gray-600 outline-none w-full h-full text-left tracking-widest"
-                                    {...register("password", {
-                                        required: "كلمة المرور مطلوبة",
-                                        minLength: {
-                                            value: 6,
-                                            message: "يجب أن تكون 6 أحرف على الأقل",
-                                        },
-                                    })}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="text-gray-500 hover:text-accent focus:outline-none shrink-0"
-                                >
-                                    {showPassword ? <EyeOff size={20}/> : <Eye size={20}/>}
-                                </button>
-                            </div>
-                            {errors.password && (
-                                <p className="text-red-500 text-sm">
-                                    {errors.password.message}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Confirm Password Input */}
-                        <div className="w-full space-y-2 mb-8 text-right">
-                            <label className="text-sm font-semibold text-gray-300 tracking-wide">
-                                تأكيد كلمة المرور
-                            </label>
-                            <div
-                                className="flex items-center w-full bg-black/50 border border-white/10 h-12 rounded-xl overflow-hidden px-4 gap-3 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent transition-all"
-                                dir="ltr"
-                            >
-                                <Lock className="w-5 h-5 text-gray-500 shrink-0"/>
-                                <Input
-                                    type={showConfirmPassword ? "text" : "password"}
-                                    placeholder="••••••••"
-                                    className="bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-white placeholder:text-gray-600 outline-none w-full h-full text-left tracking-widest"
-                                    {...register("confirm_password", {
-                                        required: "تأكيد كلمة المرور مطلوب",
-                                        validate: (value) =>
-                                            value === watch("password") ||
-                                            "كلمتا المرور غير متطابقتين",
-                                    })}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    className="text-gray-500 hover:text-accent focus:outline-none shrink-0"
-                                >
-                                    {showConfirmPassword ? (
-                                        <EyeOff size={20}/>
-                                    ) : (
-                                        <Eye size={20}/>
-                                    )}
-                                </button>
-                            </div>
-                            {errors.confirm_password && (
-                                <p className="text-red-500 text-sm">
-                                    {errors.confirm_password.message}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Submit Button */}
-                        <button
-                            type="submit"
-                            className="w-full h-12 rounded-xl font-bold text-black bg-accent hover:bg-accent/90 transition-all shadow-lg flex items-center justify-center gap-2 mb-6"
-                            style={{boxShadow: "0 0 20px rgba(212,175,55,0.25)"}}
+                  className="flex h-12 w-full! items-center gap-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] px-4 transition-all focus-within:border-accent focus-within:ring-1 focus-within:ring-accent
+                "
+                >
+                  <Controller
+                    name="country"
+                    control={control}
+                    rules={{ required: "الدولة مطلوبة" }}
+                    render={({ field }) => (
+                      <Select
+                        aria-label="Select country"
+                        value={field.value || ""}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger
+                          size="sm"
+                          className="h-full w-full bg-transparent border-0 px-0 text-white shadow-none ring-0 outline-none focus:ring-0 focus:outline-none data-[placeholder]:text-gray-500"
                         >
-                            تسجيل حساب جديد
-                            <ArrowRight className="w-5 h-5"/>
-                        </button>
-
-                        {/* Sign in link */}
-                        <p className="text-sm text-gray-400">
-                            أتمتلك حساباً بالفعل؟{" "}
-                            <Link
-                                to="/login"
-                                className="font-bold text-white hover:text-accent transition-colors"
+                          <MapPin className="size-5 shrink-0 text-gray-500" />
+                          <SelectValue>
+                            <span
+                              className={
+                                selectedCountryName
+                                  ? "text-white"
+                                  : "text-gray-500"
+                              }
                             >
-                                تسجيل الدخول
-                            </Link>
-                        </p>
-                    </form>
+                              {selectedCountryName || "اختر الدولة"}
+                            </span>
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectPopup className="mt-1 rounded-xl border border-white/10 bg-[#141414] text-white shadow-2xl">
+                          {" "}
+                          {countries.map((country) => (
+                            <SelectItem
+                              key={country.id}
+                              value={String(country.id)}
+                              className="text-white"
+                            >
+                              {country.name}
+                            </SelectItem>
+                          ))}
+                        </SelectPopup>
+                      </Select>
+                    )}
+                  />
                 </div>
+              </div>
+
+              {errors.country && (
+                <p className="text-sm text-red-500">{errors.country.message}</p>
+              )}
             </div>
 
-            {/* Left Side (Image) */}
-            <div className="w-full lg:w-1/2 hidden lg:block relative p-4 pl-0">
-                <div className="w-full h-full rounded-3xl overflow-hidden relative">
-                    <div className="absolute inset-0 bg-linear-to-l from-[#0e0e0e] to-transparent z-10"/>
-                    <div
-                        className="absolute inset-0 bg-linear-to-t from-[#0e0e0e] via-transparent to-transparent z-10"/>
-                    <img
-                        className="w-full h-full object-cover"
-                        src="/login-bg.png"
-                        alt="Signup Background"
-                    />
-                    <div className="absolute inset-0 bg-accent/5 mix-blend-overlay z-0"/>
-                </div>
+            <div className="mb-5 w-full space-y-2 text-right">
+              <label className="text-sm font-semibold tracking-wide text-gray-300">
+                رقم واتساب
+              </label>
+
+              <div
+                className="flex h-12 w-full items-center gap-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] px-4 transition-all focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
+                dir="ltr"
+              >
+                <Phone className="h-5 w-5 shrink-0 text-gray-500" />
+
+                <Input
+                  type="tel"
+                  placeholder="213555000000"
+                  className="h-full w-full border-0 bg-transparent text-left text-white outline-none placeholder:text-gray-600 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  {...register("whatsapp", {
+                    required: "رقم واتساب مطلوب",
+                    pattern: {
+                      value: /^\+?[0-9]{8,15}$/,
+                      message: "صيغة رقم واتساب غير صحيحة",
+                    },
+                  })}
+                />
+              </div>
+
+              {errors.whatsapp && (
+                <p className="text-sm text-red-500">
+                  {errors.whatsapp.message}
+                </p>
+              )}
             </div>
+
+            <div className="mb-5 w-full space-y-2 text-right">
+              <label className="text-sm font-semibold tracking-wide text-gray-300">
+                كلمة المرور
+              </label>
+
+              <div
+                className="flex h-12 w-full items-center gap-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] px-4 transition-all focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
+                dir="ltr"
+              >
+                <Lock className="h-5 w-5 shrink-0 text-gray-500" />
+
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  className="h-full w-full border-0 bg-transparent text-left tracking-widest text-white outline-none placeholder:text-gray-600 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  {...register("password", {
+                    required: "كلمة المرور مطلوبة",
+                    minLength: {
+                      value: 6,
+                      message: "يجب أن تكون 6 أحرف على الأقل",
+                    },
+                  })}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="shrink-0 text-gray-500 hover:text-accent focus:outline-none"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+
+              {errors.password && (
+                <p className="text-sm text-red-500">
+                  {errors.password.message}
+                </p>
+              )}
+            </div>
+
+            <div className="mb-8 w-full space-y-2 text-right">
+              <label className="text-sm font-semibold tracking-wide text-gray-300">
+                تأكيد كلمة المرور
+              </label>
+
+              <div
+                className="flex h-12 w-full items-center gap-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] px-4 transition-all focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
+                dir="ltr"
+              >
+                <Lock className="h-5 w-5 shrink-0 text-gray-500" />
+
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  className="h-full w-full border-0 bg-transparent text-left tracking-widest text-white outline-none placeholder:text-gray-600 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  {...register("password_confirm", {
+                    required: "تأكيد كلمة المرور مطلوب",
+                    validate: (value) =>
+                      value === watch("password") ||
+                      "كلمتا المرور غير متطابقتين",
+                  })}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  className="shrink-0 text-gray-500 hover:text-accent focus:outline-none"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff size={20} />
+                  ) : (
+                    <Eye size={20} />
+                  )}
+                </button>
+              </div>
+
+              {errors.password_confirm && (
+                <p className="text-sm text-red-500">
+                  {errors.password_confirm.message}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="mb-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-accent font-bold text-black shadow-lg transition-all hover:bg-accent/90"
+              style={{ boxShadow: "0 0 20px rgba(212,175,55,0.25)" }}
+            >
+              تسجيل حساب جديد
+              <ArrowRight className="h-5 w-5" />
+            </button>
+
+            <p className="text-sm text-gray-400">
+              أتمتلك حساباً بالفعل؟{" "}
+              <Link
+                to="/login"
+                className="font-bold text-white transition-colors hover:text-accent"
+              >
+                تسجيل الدخول
+              </Link>
+            </p>
+          </form>
         </div>
-    );
+      </div>
+
+      <div className="relative hidden w-full p-4 pl-0 lg:block lg:w-1/2">
+        <div className="relative h-full w-full overflow-hidden rounded-3xl">
+          <div className="absolute inset-0 z-10 bg-linear-to-l from-[#0e0e0e] to-transparent" />
+          <div className="absolute inset-0 z-10 bg-linear-to-t from-[#0e0e0e] via-transparent to-transparent" />
+
+          <img
+            className="h-full w-full object-cover"
+            src="/login-bg.png"
+            alt="Signup Background"
+          />
+
+          <div className="absolute inset-0 z-0 bg-accent/5 mix-blend-overlay" />
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { Lock, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
+import { showInfoToast } from "@/lib/toast";
 
 // 1. إنشاء واجهة (Interface) لتحديد أنواع حقول النموذج
 interface ResetPasswordInputs {
@@ -17,6 +18,10 @@ export default function ResetPasswordContent() {
     formState: { errors },
   } = useForm<ResetPasswordInputs>(); // 2. تمرير الواجهة هنا
 
+  const onSubmit = () => {
+    showInfoToast("تم التحقق من البيانات بنجاح. خطوة حفظ كلمة المرور النهائية قيد الربط الآن.");
+  };
+
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)] w-full bg-[#0e0e0e] p-4 sm:p-8 relative">
       <div className="w-full max-w-md bg-[#141414] border border-white/5 rounded-3xl p-8 sm:p-10 shadow-2xl relative overflow-hidden z-20">
@@ -25,7 +30,7 @@ export default function ResetPasswordContent() {
 
         <form
           className="relative z-10 flex flex-col items-center justify-center w-full"
-          onSubmit={handleSubmit((data) => console.log(data))}
+          onSubmit={handleSubmit(onSubmit)}
         >
           <h2 className="text-3xl font-bold text-white mb-2 tracking-tight text-center">
             إعادة تعيين كلمة المرور
@@ -41,7 +46,7 @@ export default function ResetPasswordContent() {
               كلمة المرور الجديدة
             </label>
             <div
-              className="flex items-center w-full bg-black/50 border border-white/10 h-12 rounded-xl overflow-hidden px-4 gap-3 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent transition-all"
+              className="flex items-center w-full bg-white/[0.04] border border-white/10 h-12 rounded-xl overflow-hidden px-4 gap-3 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent transition-all"
               dir="ltr"
             >
               <Lock className="w-5 h-5 text-gray-500 shrink-0" />
@@ -69,7 +74,7 @@ export default function ResetPasswordContent() {
               تأكيد كلمة المرور
             </label>
             <div
-              className="flex items-center w-full bg-black/50 border border-white/10 h-12 rounded-xl overflow-hidden px-4 gap-3 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent transition-all"
+              className="flex items-center w-full bg-white/[0.04] border border-white/10 h-12 rounded-xl overflow-hidden px-4 gap-3 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent transition-all"
               dir="ltr"
             >
               <Lock className="w-5 h-5 text-gray-500 shrink-0" />
