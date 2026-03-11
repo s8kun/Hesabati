@@ -1,20 +1,107 @@
 @import "tailwindcss";
+@import "flowbite/src/themes/default";
+:root {
+    --input-autofill-bg: transparent;
+}
+
 body {
-  font-family: "Cairo", sans-serif;
+    font-family: "Cairo", sans-serif;
 }
+
 h1, h2, h3 {
-  font-family: 'Cairo', sans-serif;
-  font-weight: 700;
+    font-family: 'Cairo', sans-serif;
+    font-weight: 700;
 }
+
 @theme {
-  --color-primary: #ffffff;
-  --color-secondary: #1F1F1F;
-  --color-accent: #D4AF37;
-  --color-accent-soft: #F5E6A3;
-  --color-background: #121212;
-  --color-text: #E5E5E5;
+    --color-primary: #ffffff;
+    --color-secondary: #1F1F1F;
+    --color-accent: #D4AF37;
+    --color-accent-soft: #F5E6A3;
+    --color-background: #121212;
+    --color-text: #E5E5E5;
+}
+input::selection {
+  background: rgba(212, 175, 55, 0.35);
+  color: white;
 }
 
+input::-moz-selection {
+  background: rgba(212, 175, 55, 0.35);
+  color: white;
+}
+/* Autofill fix */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+    background-color: var(--input-autofill-bg) !important;
+    -webkit-text-fill-color: inherit !important;
+    caret-color: inherit;
+    -webkit-box-shadow: 0 0 0 1000px var(--input-autofill-bg) inset !important;
+    box-shadow: 0 0 0 1000px var(--input-autofill-bg) inset !important;
+    border-radius: inherit;
+    transition: background-color 9999s ease-in-out 0s, color 9999s ease-in-out 0s;
+}
 
+.hot-toast-card {
+    position: relative;
+    overflow: hidden;
+    padding: 14px 16px 14px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: radial-gradient(120% 150% at 100% 0%, rgba(212, 175, 55, 0.18) 0%, rgba(212, 175, 55, 0) 58%),
+    linear-gradient(145deg, #1b1b1b 0%, #111111 100%);
+    color: #f8fafc;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(12px);
+    font-family: "Cairo", sans-serif;
+    line-height: 1.65;
+    font-size: 0.94rem;
+    font-weight: 700;
+}
 
+.hot-toast-card::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    right: 0;
+    width: 4px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #f8e7a8 0%, #d4af37 100%);
+}
 
+.hot-toast-card [data-icon] {
+    margin-inline-start: 2px;
+    margin-inline-end: 10px;
+}
+
+.hot-toast-success {
+    border-color: rgba(34, 197, 94, 0.42);
+    box-shadow: 0 14px 36px rgba(34, 197, 94, 0.17);
+}
+
+.hot-toast-error {
+    border-color: rgba(248, 113, 113, 0.45);
+    box-shadow: 0 14px 36px rgba(239, 68, 68, 0.2);
+}
+
+.hot-toast-info {
+    border-color: rgba(212, 175, 55, 0.45);
+    box-shadow: 0 14px 36px rgba(212, 175, 55, 0.16);
+}
+
+@media (max-width: 640px) {
+    .hot-toast-card {
+        max-width: calc(100vw - 24px);
+        font-size: 0.9rem;
+        padding: 13px 14px 13px 12px;
+    }
+}

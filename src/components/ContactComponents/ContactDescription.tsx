@@ -38,7 +38,7 @@ export default function ContactDescription() {
                   <input
                     type="text"
                     placeholder="مثال: أحمد محمد"
-                    className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
+                    className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
                   />
                 </div>
                 <div className="space-y-3">
@@ -48,7 +48,7 @@ export default function ContactDescription() {
                   <input
                     type="text"
                     placeholder="أدخل وسيلة للتواصل معك"
-                    className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all text-left dir-ltr"
+                    className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all text-left dir-ltr"
                     dir="auto"
                   />
                 </div>
@@ -61,7 +61,7 @@ export default function ContactDescription() {
                 <input
                   type="text"
                   placeholder="عن ماذا تود الاستفسار؟"
-                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
                 />
               </div>
 
@@ -72,7 +72,7 @@ export default function ContactDescription() {
                 <textarea
                   rows={5}
                   placeholder="اكتب تفاصيل استفسارك أو مشكلتك هنا بوضوح..."
-                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all resize-none"
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all resize-none"
                 ></textarea>
               </div>
 

@@ -1,65 +1,230 @@
-import { createContext, useContext, useState } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useMemo } from "react";
+import { create } from "zustand";
+import { useMarketplaceMeta } from "@/context/MarketplaceMetaContext";
+import { apiFetch } from "@/lib/apiFetch";
 
-// Mocking some static exchange rates (1 USD TO Local Currency)
-export const exchangeRates: Record<string, number> = {
-  US: 1, // US Dollar
-  LY: 5.0, // Libyan Dinar -> 1 USD = ~5 LYD
-  DZ: 135.0, // Algerian Dinar -> 1 USD = ~135 DZD
-  SA: 3.75, // Saudi Riyal -> 1 USD = ~3.75 SAR
-  EG: 31.0, // Egyptian Pound -> 1 USD = ~31 EGP
-  AE: 3.67, // UAE Dirham -> 1 USD = ~3.67 AED
+type RatesByCountryId = Record<
+  string,
+  {
+    rate: number;
+    currencyCode: string;
+    countryName: string;
+  }
+>;
+
+type CountriesMetaResponse = {
+  countries?: Array<{
+    id: number;
+    name: string;
+    currency_code?: string;
+    rate_to_usd?: string;
+  }>;
 };
 
-// Currency map
-export const countryCurrencies: Record<string, string> = {
-  US: "$",
-  LY: "د.ل",
-  DZ: "د.ج",
-  SA: "ر.س",
-  EG: "ج.م",
-  AE: "د.إ",
+type SupportedCountriesResponse = {
+  title?: string;
+  description?: string;
+  rates?: Array<{
+    usd_amount: string;
+    local_amount: string;
+    label: string;
+    pair: string;
+  }>;
 };
 
-interface ExchangeRateContextType {
-  rates: Record<string, number>;
+type SupportedRate = {
+  usdAmount: string;
+  localAmount: string;
+  label: string;
+  pair: string;
+};
+
+interface ExchangeRateStoreType {
+  rates: RatesByCountryId;
+  supportedRates: SupportedRate[];
+  title: string;
+  description: string;
+  isLoading: boolean;
+  error: string | null;
+  initialized: boolean;
+  fetchCountriesMeta: () => Promise<void>;
+  fetchSupportedCountriesRates: () => Promise<void>;
+  initialize: () => Promise<void>;
   convertPrice: (
-    priceInUSD: number,
+    priceInUSD: string | number,
     targetCountry: string,
-  ) => { amount: number; symbol: string };
+  ) => { amount: number; symbol: string; rate: number };
 }
 
-const ExchangeRateContext = createContext<ExchangeRateContextType | undefined>(
-  undefined,
-);
+const buildRatesByCountry = (
+  countries: ReturnType<typeof useMarketplaceMeta.getState>["countries"],
+) =>
+  countries.reduce<RatesByCountryId>((acc, country) => {
+    const parsedRate = Number(country.rate_to_usd);
 
-export const ExchangeRateProvider = ({ children }: { children: ReactNode }) => {
-  const [rates] = useState(exchangeRates); // For now static, can be updated from API later
-
-  const convertPrice = (priceInUSD: number, targetCountry: string) => {
-    // If the country is not supported or set to ALL, default back to USD
-    if (targetCountry === "ALL" || !rates[targetCountry]) {
-      return { amount: priceInUSD, symbol: countryCurrencies["US"] };
+    if (!country.id || Number.isNaN(parsedRate) || parsedRate <= 0) {
+      return acc;
     }
-    const amount = priceInUSD * rates[targetCountry];
-    const symbol = countryCurrencies[targetCountry];
 
-    return { amount, symbol };
-  };
+    acc[String(country.id)] = {
+      rate: parsedRate,
+      currencyCode: country.currency_code || "USD",
+      countryName: country.name,
+    };
 
-  return (
-    <ExchangeRateContext.Provider value={{ rates, convertPrice }}>
-      {children}
-    </ExchangeRateContext.Provider>
-  );
-};
+    return acc;
+  }, {});
+
+const useExchangeRateStore = create<ExchangeRateStoreType>((set, get) => ({
+  rates: {},
+  supportedRates: [],
+  title: "أسعار الصرف اليوم",
+  description:
+    "يتم عرض الأسعار أدناه بناءً على سعر الدولار الأمريكي (USD) مقابل العملات المحلية المدعومة في المنصة.",
+  isLoading: false,
+  error: null,
+  initialized: false,
+  fetchCountriesMeta: async () => {
+    const { countries, setCountries } = useMarketplaceMeta.getState();
+    const hasRates = countries.some((country) => !!country.rate_to_usd);
+    if (hasRates) {
+      set({ rates: buildRatesByCountry(countries) });
+      return;
+    }
+
+    set({ isLoading: true, error: null });
+
+    try {
+      const baseUrl = import.meta.env.VITE_BACKEND_URL;
+      if (!baseUrl) {
+        throw new Error("VITE_BACKEND_URL is not configured");
+      }
+
+      const url = new URL(baseUrl);
+      url.searchParams.set("page", "1");
+      url.searchParams.set("page_size", "1");
+
+      const response = await apiFetch(url.toString(), { auth: false });
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+
+      const json = (await response.json()) as CountriesMetaResponse;
+
+      if (json.countries?.length) {
+        setCountries(json.countries);
+        set({ rates: buildRatesByCountry(json.countries) });
+      }
+    } catch (fetchError) {
+      set({
+        error:
+          fetchError instanceof Error
+            ? fetchError.message
+            : "Failed to load exchange rates",
+      });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  fetchSupportedCountriesRates: async () => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const baseUrl = import.meta.env.VITE_BACKEND_URL;
+      if (!baseUrl) {
+        throw new Error("VITE_BACKEND_URL is not configured");
+      }
+
+      const cleanBaseUrl = baseUrl.endsWith("/")
+        ? baseUrl.slice(0, -1)
+        : baseUrl;
+
+      const response = await apiFetch(`${cleanBaseUrl}/supported-countries/`, {
+        auth: false,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+
+      const json = (await response.json()) as SupportedCountriesResponse;
+
+      set({
+        title: json.title || "أسعار الصرف اليوم",
+        description:
+          json.description ||
+          "يتم عرض الأسعار أدناه بناءً على سعر الدولار الأمريكي (USD) مقابل العملات المحلية المدعومة في المنصة.",
+        supportedRates: (json.rates || []).map((rate) => ({
+          usdAmount: rate.usd_amount,
+          localAmount: rate.local_amount,
+          label: rate.label,
+          pair: rate.pair,
+        })),
+      });
+    } catch (fetchError) {
+      set({
+        error:
+          fetchError instanceof Error
+            ? fetchError.message
+            : "Failed to load exchange rates",
+      });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  initialize: async () => {
+    if (get().initialized) {
+      return;
+    }
+
+    set({ initialized: true });
+    await Promise.all([
+      get().fetchCountriesMeta(),
+      get().fetchSupportedCountriesRates(),
+    ]);
+  },
+  convertPrice: (priceInUSD, targetCountry) => {
+    const rates = get().rates;
+    const numericPrice = Number(priceInUSD);
+    const safePrice = Number.isNaN(numericPrice) ? 0 : numericPrice;
+
+    if (!targetCountry || targetCountry === "all" || !rates[targetCountry]) {
+      return { amount: safePrice, symbol: "USD", rate: 1 };
+    }
+
+    const targetRate = rates[targetCountry];
+    const amount = safePrice * targetRate.rate;
+    const symbol = targetRate.currencyCode;
+
+    return { amount, symbol, rate: targetRate.rate };
+  },
+}));
 
 export const useExchangeRate = () => {
-  const context = useContext(ExchangeRateContext);
-  if (!context) {
-    throw new Error(
-      "useExchangeRate must be used within an ExchangeRateProvider",
-    );
-  }
-  return context;
+  const initialize = useExchangeRateStore((state) => state.initialize);
+  const rates = useExchangeRateStore((state) => state.rates);
+  const supportedRates = useExchangeRateStore((state) => state.supportedRates);
+  const title = useExchangeRateStore((state) => state.title);
+  const description = useExchangeRateStore((state) => state.description);
+  const isLoading = useExchangeRateStore((state) => state.isLoading);
+  const error = useExchangeRateStore((state) => state.error);
+  const convertPrice = useExchangeRateStore((state) => state.convertPrice);
+
+  useEffect(() => {
+    void initialize();
+  }, [initialize]);
+
+  return useMemo(
+    () => ({
+      rates,
+      supportedRates,
+      title,
+      description,
+      isLoading,
+      error,
+      convertPrice,
+    }),
+    [rates, supportedRates, title, description, isLoading, error, convertPrice],
+  );
 };

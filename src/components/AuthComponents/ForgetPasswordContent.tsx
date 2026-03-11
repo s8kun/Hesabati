@@ -1,7 +1,14 @@
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 import { Mail, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
+import {
+  getApiMessageInArabic,
+  getErrorMessageInArabic,
+  showErrorToast,
+  showSuccessToast,
+} from "@/lib/toast";
+import { apiFetchJson } from "@/lib/apiFetch";
 
 // 1. تحديد نوع حقل الإدخال
 interface ForgetPasswordInputs {
@@ -9,19 +16,45 @@ interface ForgetPasswordInputs {
 }
 
 export default function ForgetPasswordContent() {
-  const navigate = useNavigate();
-
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<ForgetPasswordInputs>();
 
-  const onSubmit = (data: ForgetPasswordInputs) => {
-    console.log("استعادة كلمة المرور للبريد:", data.email);
-    // هنا يمكن إضافة منطق إرسال الكود للبريد الإلكتروني
-    // وبعد النجاح نوجه المستخدم لصفحة الـ OTP أو ما شابه
-    navigate("/otp");
+  const onSubmit = async (data: ForgetPasswordInputs) => {
+    try {
+      const { response, data: result } = await apiFetchJson<
+        Record<string, unknown>
+      >(`/reset-password-request/`, {
+        method: "POST",
+        auth: false,
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        throw new Error(
+          getApiMessageInArabic(
+            result,
+            "تعذّر إرسال رمز التحقق، حاول مرة أخرى.",
+          ),
+        );
+      }
+      showSuccessToast(
+        getApiMessageInArabic(
+          result,
+          "تم إرسال رمز التحقق بنجاح، راجع بريدك الإلكتروني.",
+        ),
+      );
+      return response;
+    } catch (error: unknown) {
+      showErrorToast(
+        getErrorMessageInArabic(error, "حدث خطأ غير متوقع أثناء إرسال الرمز."),
+      );
+    }
   };
 
   return (
@@ -49,7 +82,7 @@ export default function ForgetPasswordContent() {
               البريد الإلكتروني
             </label>
             <div
-              className={`flex items-center w-full bg-black/50 border ${
+              className={`flex items-center w-full bg-white/[0.04] border ${
                 errors.email ? "border-red-500/50" : "border-white/10"
               } h-12 rounded-xl overflow-hidden px-4 gap-3 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent transition-all`}
               dir="ltr"

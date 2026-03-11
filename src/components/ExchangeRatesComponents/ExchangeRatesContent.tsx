@@ -1,11 +1,9 @@
-import {
-  useExchangeRate,
-  countryCurrencies,
-} from "../../context/ExchangeRateContext";
+import { useExchangeRate } from "../../context/ExchangeRateContext";
 import { ArrowLeftRight, TrendingUp } from "lucide-react";
 
 export default function ExchangeRatesContent() {
-  const { rates } = useExchangeRate();
+  const { supportedRates, title, description, isLoading, error } =
+    useExchangeRate();
 
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] w-full bg-[#0e0e0e] justify-center pt-8 p-4">
@@ -18,11 +16,10 @@ export default function ExchangeRatesContent() {
             <div className="text-right flex-1">
               <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 tracking-tight flex items-center justify-end gap-3">
                 <ArrowLeftRight className="w-8 h-8 text-accent" />
-                أسعار الصرف اليوم
+                {title}
               </h1>
               <p className="text-gray-400 text-sm md:text-base leading-relaxed">
-                يتم عرض الأسعار أدناه بناءً على سعر الدولار الأمريكي (USD) مقابل
-                عملات الدول المدعومة في المنصة.
+                {description}
               </p>
             </div>
           </div>
@@ -30,11 +27,28 @@ export default function ExchangeRatesContent() {
 
         {/* Rates Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-          {Object.entries(rates).map(([countryCode, rate]) => {
-            if (countryCode === "US" || countryCode === "ALL") return null;
+          {isLoading && supportedRates.length === 0 && (
+            <div className="md:col-span-2 lg:col-span-3 text-center text-gray-400 py-12 bg-[#141414] border border-white/10 rounded-2xl">
+              جاري تحميل أسعار الصرف...
+            </div>
+          )}
+
+          {!isLoading && error && supportedRates.length === 0 && (
+            <div className="md:col-span-2 lg:col-span-3 text-center text-red-400 py-12 bg-[#141414] border border-red-500/20 rounded-2xl">
+              تعذر تحميل أسعار الصرف: {error}
+            </div>
+          )}
+
+          {!isLoading && !error && supportedRates.length === 0 && (
+            <div className="md:col-span-2 lg:col-span-3 text-center text-gray-400 py-12 bg-[#141414] border border-white/10 rounded-2xl">
+              لا توجد أسعار صرف متاحة حالياً.
+            </div>
+          )}
+
+          {supportedRates.map((rateData) => {
             return (
               <div
-                key={countryCode}
+                key={rateData.pair}
                 className="bg-[#141414] border border-white/10 hover:border-accent/50 rounded-2xl p-6 transition-all duration-300 flex flex-col relative group overflow-hidden"
               >
                 <div className="absolute inset-0 bg-linear-to-b from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -45,13 +59,13 @@ export default function ExchangeRatesContent() {
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-xl font-bold text-white tracking-widest bg-white/10 px-3 py-1 rounded-md">
-                      1 USD
+                      {rateData.usdAmount}
                     </span>
                   </div>
                   <ArrowLeftRight className="w-5 h-5 text-gray-500" />
                   <div className="flex items-center gap-2 text-right">
                     <span className="text-xl font-bold text-accent tracking-widest bg-accent/10 px-3 py-1 rounded-md">
-                      {rate} {countryCurrencies[countryCode]}
+                      {rateData.localAmount}
                     </span>
                   </div>
                 </div>
@@ -62,10 +76,10 @@ export default function ExchangeRatesContent() {
                 >
                   <div className="flex items-center gap-2 text-sm text-gray-400">
                     <TrendingUp className="w-4 h-4 text-emerald-500" />
-                    <span>سعر اليوم</span>
+                    <span>{rateData.label}</span>
                   </div>
                   <span className="text-xs text-gray-500 font-mono">
-                    {countryCode} / USD
+                    {rateData.pair}
                   </span>
                 </div>
               </div>

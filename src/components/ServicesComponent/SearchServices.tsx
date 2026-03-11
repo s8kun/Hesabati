@@ -7,32 +7,33 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useFilters } from "@/context/FilterContext";
-
-const platforms = [
-  { value: "all", label: "كل المنصات" },
-  { value: "instagram", label: "انستقرام" },
-  { value: "facebook", label: "فيسبوك" },
-  { value: "youtube", label: "يوتيوب" },
-  { value: "x", label: "إكس (تويتر)" },
-];
-
-const countries = [
-  { value: "ALL", label: "كل الدول" },
-  { value: "US", label: "دولي" },
-  { value: "LY", label: "ليبيا" },
-  { value: "DZ", label: "الجزائر" },
-  { value: "SA", label: "السعودية" },
-  { value: "EG", label: "مصر" },
-  { value: "AE", label: "الإمارات" },
-];
+import { useMarketplaceMeta } from "@/context/MarketplaceMetaContext";
 
 function formatNumber(num: number) {
   if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
   if (num >= 1000) return (num / 1000).toFixed(1) + "K";
   return num.toString();
 }
+
+const createLocalFilters = (
+  filters: ReturnType<typeof useFilters>["filters"],
+  maxFollowers: number,
+  maxPrice: number,
+) => ({
+  ...filters,
+  categoryId: filters.categoryId || "all",
+  countryId: filters.countryId || "all",
+  followersRange: [
+    Math.max(0, filters.followersRange[0]),
+    Math.min(filters.followersRange[1], maxFollowers),
+  ] as [number, number],
+  priceRange: [
+    Math.max(0, filters.priceRange[0]),
+    Math.min(filters.priceRange[1], maxPrice),
+  ] as [number, number],
+});
 
 export default function SearchServices() {
   const {
@@ -44,16 +45,80 @@ export default function SearchServices() {
     defaultFilters,
   } = useFilters();
 
-  const [localFilters, setLocalFilters] = useState(filters);
+  const { countries, categories, maxes } = useMarketplaceMeta();
+  const isMetaLoading =
+    countries.length === 0 &&
+    categories.length === 0 &&
+    maxes.max_followers === 0 &&
+    maxes.max_price === 0;
+
+  const maxFollowers = maxes?.max_followers ?? defaultFilters.followersRange[1];
+  const maxPrice = Math.ceil(maxes?.max_price ?? defaultFilters.priceRange[1]);
+
+  const effectiveDefaultFilters = useMemo(
+    () => ({
+      ...defaultFilters,
+      followersRange: [0, maxFollowers] as [number, number],
+      priceRange: [0, maxPrice] as [number, number],
+    }),
+    [defaultFilters, maxFollowers, maxPrice],
+  );
+
+  const categoriesOptions = useMemo(
+    () => [
+      { value: "all", label: "كل المنصات" },
+      ...categories.map((item) => ({
+        value: String(item.id),
+        label: item.name,
+      })),
+    ],
+    [categories],
+  );
+
+  const countriesOptions = useMemo(
+    () => [
+      { value: "all", label: "كل الدول" },
+      ...countries.map((item) => ({
+        value: String(item.id),
+        label: item.name,
+      })),
+    ],
+    [countries],
+  );
+
+  const [localFilters, setLocalFilters] = useState(() =>
+    createLocalFilters(filters, maxFollowers, maxPrice),
+  );
+
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Sync draft state if global filters change externally (e.g. from removing a chip or reset)
   useEffect(() => {
-    setLocalFilters(filters);
-  }, [filters]);
+    const nextLocalFilters = createLocalFilters(filters, maxFollowers, maxPrice);
+    const frameId = window.requestAnimationFrame(() => {
+      setLocalFilters(nextLocalFilters);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [filters, maxFollowers, maxPrice]);
 
   const handleApply = () => {
-    setAllFilters(localFilters);
+    setAllFilters({
+      ...localFilters,
+      categoryId:
+        localFilters.categoryId === "all" ? "" : localFilters.categoryId,
+      countryId: localFilters.countryId === "all" ? "" : localFilters.countryId,
+      followersRange: [
+        Math.max(0, localFilters.followersRange[0]),
+        Math.min(localFilters.followersRange[1], maxFollowers),
+      ] as [number, number],
+      priceRange: [
+        Math.max(0, localFilters.priceRange[0]),
+        Math.min(localFilters.priceRange[1], maxPrice),
+      ] as [number, number],
+    });
+
     setShowAdvanced(false);
   };
 
@@ -63,17 +128,21 @@ export default function SearchServices() {
     }
   };
 
-  const updateLocal = (key: keyof typeof defaultFilters, value: any) => {
-    setLocalFilters((prev) => ({ ...prev, [key]: value }));
+  const updateLocal = (
+    key: keyof typeof localFilters,
+    value: string | [number, number] | null,
+  ) => {
+    setLocalFilters((prev) => ({ ...prev, [key]: value ?? "" }));
   };
 
   const hasVisibleChips =
-    filters.platform !== "all" ||
-    filters.country !== "ALL" ||
-    filters.followersRange[0] !== defaultFilters.followersRange[0] ||
-    filters.followersRange[1] !== defaultFilters.followersRange[1] ||
-    filters.priceRange[0] !== defaultFilters.priceRange[0] ||
-    filters.priceRange[1] !== defaultFilters.priceRange[1];
+    !isMetaLoading &&
+    (filters.categoryId !== "" ||
+      filters.countryId !== "" ||
+      filters.followersRange[0] !== effectiveDefaultFilters.followersRange[0] ||
+      filters.followersRange[1] !== effectiveDefaultFilters.followersRange[1] ||
+      filters.priceRange[0] !== effectiveDefaultFilters.priceRange[0] ||
+      filters.priceRange[1] !== effectiveDefaultFilters.priceRange[1]);
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 mb-10 mt-8">
@@ -85,12 +154,12 @@ export default function SearchServices() {
             "0 0 0 1px rgba(212,175,55,0.08), 0 8px 40px rgba(0,0,0,0.6)",
         }}
       >
-        {/* Input row */}
         <div className="flex items-center h-14">
           <button
             onClick={handleApply}
             className="px-4 text-accent shrink-0 hover:scale-110 transition-transform"
             title="بحث"
+            type="button"
           >
             <Search className="w-5 h-5" />
           </button>
@@ -102,7 +171,7 @@ export default function SearchServices() {
             value={localFilters.query}
             onChange={(e) => updateLocal("query", e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="ابحث عن حساب... مثال: انستقرام 10K"
+            placeholder="ابحث عن حساب... مثال: Account 27"
             className="flex-1 min-w-0 bg-transparent text-white text-sm sm:text-base placeholder:text-gray-500 outline-none border-none h-full text-right pr-1"
           />
 
@@ -110,6 +179,7 @@ export default function SearchServices() {
             <button
               onClick={() => updateLocal("query", "")}
               className="px-2 text-gray-600 hover:text-gray-300 transition-colors shrink-0"
+              type="button"
             >
               <X className="w-4 h-4" />
             </button>
@@ -122,82 +192,96 @@ export default function SearchServices() {
                 ? "text-gray-200 bg-white/8"
                 : "text-gray-400 hover:text-gray-200 hover:bg-white/4"
             }`}
+            type="button"
           >
             <SlidersHorizontal className="w-4 h-4" />
             <span className="hidden sm:inline">بحث متقدم</span>
-            {isFiltered && (
+            {!isMetaLoading && isFiltered && (
               <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
             )}
           </button>
         </div>
 
-        {/* Active filter chips (applied globally) */}
         {hasVisibleChips && (
           <div className="flex items-center gap-2 px-4 py-2.5 border-t border-white/6 flex-wrap">
-            {filters.platform !== "all" && (
+            {filters.categoryId !== "" && (
               <Chip
                 label={
-                  platforms.find((p) => p.value === filters.platform)?.label ??
-                  ""
+                  categoriesOptions.find((c) => c.value === filters.categoryId)
+                    ?.label ?? ""
                 }
-                onRemove={() => updateFilter("platform", "all")}
+                onRemove={() => updateFilter("categoryId", "")}
               />
             )}
-            {(filters.followersRange[0] !== defaultFilters.followersRange[0] ||
+
+            {filters.countryId !== "" && (
+              <Chip
+                label={
+                  countriesOptions.find((c) => c.value === filters.countryId)
+                    ?.label ?? ""
+                }
+                onRemove={() => updateFilter("countryId", "")}
+              />
+            )}
+
+            {(filters.followersRange[0] !==
+              effectiveDefaultFilters.followersRange[0] ||
               filters.followersRange[1] !==
-                defaultFilters.followersRange[1]) && (
+                effectiveDefaultFilters.followersRange[1]) && (
               <Chip
                 label={`المتابعين: ${formatNumber(filters.followersRange[0])} - ${formatNumber(filters.followersRange[1])}`}
                 onRemove={() =>
-                  updateFilter("followersRange", defaultFilters.followersRange)
+                  updateFilter(
+                    "followersRange",
+                    effectiveDefaultFilters.followersRange,
+                  )
                 }
               />
             )}
-            {(filters.priceRange[0] !== defaultFilters.priceRange[0] ||
-              filters.priceRange[1] !== defaultFilters.priceRange[1]) && (
+
+            {(filters.priceRange[0] !== effectiveDefaultFilters.priceRange[0] ||
+              filters.priceRange[1] !==
+                effectiveDefaultFilters.priceRange[1]) && (
               <Chip
                 label={`السعر: ${filters.priceRange[0]} - ${filters.priceRange[1]}`}
                 onRemove={() =>
-                  updateFilter("priceRange", defaultFilters.priceRange)
+                  updateFilter("priceRange", effectiveDefaultFilters.priceRange)
                 }
               />
             )}
-            {filters.country !== "ALL" && (
-              <Chip
-                label={
-                  countries.find((c) => c.value === filters.country)?.label ??
-                  ""
-                }
-                onRemove={() => updateFilter("country", "ALL")}
-              />
-            )}
+
             <button
               onClick={() => {
                 resetFilters();
-                setLocalFilters(defaultFilters);
+                setLocalFilters({
+                  ...effectiveDefaultFilters,
+                  categoryId: "all",
+                  countryId: "all",
+                });
               }}
               className="text-xs text-gray-600 hover:text-red-400 mr-auto transition-colors"
+              type="button"
             >
               مسح الكل ✕
             </button>
           </div>
         )}
 
-        {/* Filter panel */}
         {showAdvanced && (
           <div className="border-t border-white/6 px-4 py-6 grid grid-cols-1 md:grid-cols-2 gap-8 bg-[#141414]">
             <div className="space-y-6">
               <FilterSelect
                 label="المنصة"
-                value={localFilters.platform}
-                onChange={(v) => updateLocal("platform", v ?? "all")}
-                options={platforms}
+                value={localFilters.categoryId}
+                onChange={(v) => updateLocal("categoryId", v)}
+                options={categoriesOptions}
               />
+
               <FilterSelect
                 label="الدولة"
-                value={localFilters.country}
-                onChange={(v) => updateLocal("country", v ?? "ALL")}
-                options={countries}
+                value={localFilters.countryId}
+                onChange={(v) => updateLocal("countryId", v)}
+                options={countriesOptions}
               />
             </div>
 
@@ -212,12 +296,15 @@ export default function SearchServices() {
                     {formatNumber(localFilters.followersRange[1])}
                   </p>
                 </div>
+
                 <Slider
                   min={0}
-                  max={500000}
+                  max={maxFollowers}
                   step={1000}
                   value={localFilters.followersRange}
-                  onValueChange={(v) => updateLocal("followersRange", v)}
+                  onValueChange={(v) =>
+                    updateLocal("followersRange", v as [number, number])
+                  }
                   className="w-full"
                 />
               </div>
@@ -231,12 +318,15 @@ export default function SearchServices() {
                     {localFilters.priceRange[0]} - {localFilters.priceRange[1]}
                   </p>
                 </div>
+
                 <Slider
                   min={0}
-                  max={10000}
+                  max={maxPrice}
                   step={100}
                   value={localFilters.priceRange}
-                  onValueChange={(v) => updateLocal("priceRange", v)}
+                  onValueChange={(v) =>
+                    updateLocal("priceRange", v as [number, number])
+                  }
                   className="w-full"
                 />
               </div>
@@ -244,14 +334,21 @@ export default function SearchServices() {
 
             <div className="md:col-span-2 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-4 border-t border-white/5 mt-4 sm:mt-2">
               <button
-                onClick={() => setLocalFilters(filters)}
+                onClick={() =>
+                  setLocalFilters(
+                    createLocalFilters(filters, maxFollowers, maxPrice),
+                  )
+                }
                 className="px-5 py-3 sm:py-2.5 text-sm font-bold text-gray-400 hover:text-white hover:bg-white/5 sm:hover:bg-transparent rounded-xl transition-colors text-center"
+                type="button"
               >
                 تجاهل
               </button>
+
               <button
                 onClick={handleApply}
                 className="px-6 py-3 sm:py-2.5 text-sm font-bold text-black bg-accent hover:bg-accent/90 rounded-xl transition-all shadow-lg shadow-accent/20 text-center"
+                type="button"
               >
                 تطبيق الفلاتر والبحث
               </button>
@@ -279,11 +376,15 @@ function FilterSelect({
       <p className="text-xs text-gray-500 font-medium tracking-wide">{label}</p>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="h-10 bg-black/40 border-white/10 text-white text-sm focus:ring-accent md:h-12 rounded-xl transition-all">
-          <SelectValue />
+          <SelectValue placeholder={`اختر ${label}`} />
         </SelectTrigger>
         <SelectContent>
           {options.map((o) => (
-            <SelectItem className="bg-[#1e1e1e]" key={o.value} value={o.value}>
+            <SelectItem
+              className="bg-[#1e1e1e] hover:bg-accent"
+              key={o.value}
+              value={o.value}
+            >
               {o.label}
             </SelectItem>
           ))}
@@ -296,8 +397,12 @@ function FilterSelect({
 function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-accent/10 text-accent border border-accent/25 rounded-full px-3 py-1.5 hover:bg-accent/15 transition-all">
-      <span dir="ltr">{label}</span>
-      <button onClick={onRemove} className="hover:text-white transition-colors">
+      <span dir="auto">{label}</span>
+      <button
+        onClick={onRemove}
+        className="hover:text-white transition-colors"
+        type="button"
+      >
         <X className="w-3.5 h-3.5" />
       </button>
     </span>
