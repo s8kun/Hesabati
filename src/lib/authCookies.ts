@@ -45,17 +45,59 @@ export const clearAuthCookies = () => {
   cookies.remove(REFRESH_TOKEN_COOKIE, { path: "/services" });
 };
 
+const getNestedString = (
+  payload: Record<string, unknown>,
+  path: string[],
+): string | undefined => {
+  let current: unknown = payload;
+
+  for (const segment of path) {
+    if (!current || typeof current !== "object") {
+      return undefined;
+    }
+
+    current = (current as Record<string, unknown>)[segment];
+  }
+
+  return typeof current === "string" ? current : undefined;
+};
+
+const findFirstTokenMatch = (
+  payload: Record<string, unknown>,
+  candidatePaths: string[][],
+) => {
+  for (const path of candidatePaths) {
+    const match = getNestedString(payload, path);
+    if (match) {
+      return match;
+    }
+  }
+
+  return undefined;
+};
+
 export const extractAuthTokens = (payload: Record<string, unknown>) => ({
-  access:
-    typeof payload.access === "string"
-      ? payload.access
-      : typeof payload.access_token === "string"
-        ? payload.access_token
-        : undefined,
-  refresh:
-    typeof payload.refresh === "string"
-      ? payload.refresh
-      : typeof payload.refresh_token === "string"
-        ? payload.refresh_token
-        : undefined,
+  access: findFirstTokenMatch(payload, [
+    ["access"],
+    ["access_token"],
+    ["token"],
+    ["jwt"],
+    ["data", "access"],
+    ["data", "access_token"],
+    ["data", "token"],
+    ["tokens", "access"],
+    ["tokens", "access_token"],
+    ["results", "access"],
+    ["results", "access_token"],
+  ]),
+  refresh: findFirstTokenMatch(payload, [
+    ["refresh"],
+    ["refresh_token"],
+    ["data", "refresh"],
+    ["data", "refresh_token"],
+    ["tokens", "refresh"],
+    ["tokens", "refresh_token"],
+    ["results", "refresh"],
+    ["results", "refresh_token"],
+  ]),
 });

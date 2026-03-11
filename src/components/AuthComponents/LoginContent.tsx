@@ -51,7 +51,15 @@ export default function LoginContent() {
         );
       }
 
-      setAuthTokens(extractAuthTokens(result));
+      const authTokens = extractAuthTokens(result);
+
+      if (!authTokens.access) {
+        throw new Error(
+          "تم تسجيل الدخول لكن لم يتم استلام رمز الدخول من الخادم.",
+        );
+      }
+
+      setAuthTokens(authTokens);
       setUser({
         fullName: typeof result.full_name === "string" ? result.full_name : "",
         email: typeof result.email === "string" ? result.email : data.email,

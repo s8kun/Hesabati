@@ -99,7 +99,15 @@ export default function OTPContent() {
         );
       }
 
-      setAuthTokens(extractAuthTokens(result));
+      const authTokens = extractAuthTokens(result);
+
+      if (!authTokens.access) {
+        throw new Error(
+          "تم تأكيد الحساب لكن لم يتم استلام رمز الدخول من الخادم.",
+        );
+      }
+
+      setAuthTokens(authTokens);
       setUser({
         fullName: typeof result.full_name === "string" ? result.full_name : "",
         email:

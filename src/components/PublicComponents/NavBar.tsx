@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   LogIn,
   UserPlus,
@@ -11,7 +11,8 @@ import {
   ArrowLeftRight,
   UserRound,
 } from "lucide-react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
+import { useCookies } from "react-cookie";
 
 import { useUserStore } from "@/context/UserStore";
 import { clearAuthCookies } from "@/lib/authCookies";
@@ -46,14 +47,25 @@ const navLinks = [
 
 function NavBar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [cookies] = useCookies(["token"]);
   const location = useLocation();
+  const navigate = useNavigate();
   const user = useUserStore((state) => state.user);
   const clearUser = useUserStore((state) => state.clearUser);
+  const token = cookies.token as string | undefined;
+  const isAuthenticated = Boolean(token);
+
+  useEffect(() => {
+    if (!isAuthenticated && user) {
+      clearUser();
+    }
+  }, [clearUser, isAuthenticated, user]);
 
   const handleLogout = () => {
     clearAuthCookies();
     clearUser();
     setIsMobileMenuOpen(false);
+    navigate("/services", { replace: true });
   };
 
   return (
@@ -84,7 +96,7 @@ function NavBar() {
         </div>
 
         <div className="hidden shrink-0 items-center gap-2 md:flex!">
-          {user?.fullName ? (
+          {isAuthenticated ? (
             <div className="flex items-center gap-3">
               <Link
                 to="/profile"
@@ -162,7 +174,7 @@ function NavBar() {
           <div className="my-2 h-px bg-white/5"></div>
 
           <div className="flex flex-col space-y-3">
-            {user?.fullName ? (
+            {isAuthenticated ? (
               <>
                 <Link
                   to="/profile"
@@ -178,7 +190,7 @@ function NavBar() {
                 </Link>
 
                 <div className="rounded-xl bg-white/10 py-3 text-center text-white">
-                  {user.fullName}
+                  {user?.fullName || "حسابي"}
                 </div>
 
                 <button

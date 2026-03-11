@@ -1,4 +1,6 @@
 import { Navigate, Route, Routes } from "react-router";
+import type { ReactNode } from "react";
+import { useCookies } from "react-cookie";
 import Services from "@/pages/Services";
 import Terms from "@/pages/Terms";
 import Contact from "@/pages/Contact";
@@ -11,6 +13,18 @@ import ServiceDetails from "@/pages/ServiceDetails";
 import ExchangeRates from "@/pages/ExchangeRates";
 import Profile from "@/pages/Profile";
 import AnnouncementEditor from "@/pages/AnnouncementEditor";
+import NotFound from "@/pages/NotFound";
+
+function ProtectedRoute({ children }: { children: ReactNode }) {
+  const [cookies] = useCookies(["token"]);
+  const token = cookies.token as string | undefined;
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
 
 function App() {
   return (
@@ -26,15 +40,31 @@ function App() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/services/:id" element={<ServiceDetails />} />
       <Route path="/exchange-rates" element={<ExchangeRates />} />
-      <Route path="/profile" element={<Profile />} />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/profile/announcements/new"
-        element={<AnnouncementEditor />}
+        element={
+          <ProtectedRoute>
+            <AnnouncementEditor />
+          </ProtectedRoute>
+        }
       />
       <Route
         path="/profile/announcements/:id/edit"
-        element={<AnnouncementEditor />}
+        element={
+          <ProtectedRoute>
+            <AnnouncementEditor />
+          </ProtectedRoute>
+        }
       />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
