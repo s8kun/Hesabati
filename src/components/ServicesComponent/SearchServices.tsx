@@ -384,7 +384,9 @@ function FilterSelect({
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="h-10 bg-black/40 border-white/10 text-white text-sm focus:ring-accent md:h-12 rounded-xl transition-all">
           <SelectValue>
-            <span className={selectedOptionLabel ? "text-white" : "text-gray-500"}>
+            <span
+              className={selectedOptionLabel ? "text-white" : "text-gray-500"}
+            >
               {selectedOptionLabel || `اختر ${label}`}
             </span>
           </SelectValue>
