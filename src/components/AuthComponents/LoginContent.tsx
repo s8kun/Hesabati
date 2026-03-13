@@ -10,7 +10,7 @@ import {
   showSuccessToast,
 } from "@/lib/toast";
 import { useUserStore } from "@/context/UserStore";
-import { extractAuthTokens, setAuthTokens } from "@/lib/authCookies";
+import { extractAuthTokens, setAuthTokens, setRole } from "@/lib/authCookies";
 import { apiFetchJson } from "@/lib/apiFetch";
 
 interface LoginInputs {
@@ -60,9 +60,14 @@ export default function LoginContent() {
       }
 
       setAuthTokens(authTokens);
+      const userRole = typeof result.role === "string" ? result.role : "";
+      if (userRole) {
+        setRole(userRole);
+      }
       setUser({
         fullName: typeof result.full_name === "string" ? result.full_name : "",
         email: typeof result.email === "string" ? result.email : data.email,
+        role: userRole || undefined,
         country:
           typeof result.country === "string"
             ? result.country

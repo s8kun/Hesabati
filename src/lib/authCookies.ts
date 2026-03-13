@@ -2,6 +2,7 @@ import { Cookies } from "react-cookie";
 
 export const ACCESS_TOKEN_COOKIE = "token";
 export const REFRESH_TOKEN_COOKIE = "refresh_token";
+export const ROLE_COOKIE = "user_role";
 
 const cookies = new Cookies();
 const authCookieOptions = {
@@ -16,6 +17,12 @@ export const getAccessToken = () =>
 
 export const getRefreshToken = () =>
   cookies.get(REFRESH_TOKEN_COOKIE) as string | undefined;
+
+export const getRole = () => cookies.get(ROLE_COOKIE) as string | undefined;
+
+export const setRole = (role: string) => {
+  cookies.set(ROLE_COOKIE, role, { ...authCookieOptions, expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) });
+};
 
 export const setAccessToken = (accessToken: string) => {
   cookies.set(ACCESS_TOKEN_COOKIE, accessToken, authCookieOptions);
@@ -43,6 +50,8 @@ export const clearAuthCookies = () => {
   cookies.remove(ACCESS_TOKEN_COOKIE, { path: "/services" });
   cookies.remove(REFRESH_TOKEN_COOKIE, { path: "/" });
   cookies.remove(REFRESH_TOKEN_COOKIE, { path: "/services" });
+  cookies.remove(ROLE_COOKIE, { path: "/" });
+  cookies.remove(ROLE_COOKIE, { path: "/services" });
 };
 
 const getNestedString = (

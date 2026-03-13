@@ -4,6 +4,7 @@ import { persist } from "zustand/middleware";
 export type UserProfile = {
   fullName: string;
   email: string;
+  role?: string;
   country: string;
   whatsapp: string;
   description?: string;
@@ -28,6 +29,7 @@ export const useUserStore = create<UserStoreState>()(
             : {
                 fullName: userPatch.fullName || "",
                 email: userPatch.email || "",
+                role: userPatch.role || "",
                 country: userPatch.country || "",
                 whatsapp: userPatch.whatsapp || "",
                 description: userPatch.description || "",

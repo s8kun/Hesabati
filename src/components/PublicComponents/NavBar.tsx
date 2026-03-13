@@ -10,6 +10,7 @@ import {
   X,
   ArrowLeftRight,
   UserRound,
+  Settings,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useCookies } from "react-cookie";
@@ -47,7 +48,7 @@ const navLinks = [
 
 function NavBar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [cookies] = useCookies(["token"]);
+  const [cookies] = useCookies(["token", "user_role"]);
   const location = useLocation();
   const navigate = useNavigate();
   const user = useUserStore((state) => state.user);
@@ -67,6 +68,15 @@ function NavBar() {
     setIsMobileMenuOpen(false);
     navigate("/services", { replace: true });
   };
+
+  const openAdmin = () => {
+    window.location.href = "https://hisabati-platform.onrender.com/admin/";
+  };
+
+  const userRole = cookies.user_role as string | undefined;
+  const isAdmin = isAuthenticated && (userRole === "admin" || userRole === "superuser" || userRole === "staff" || userRole === "seller");
+
+  console.log("userRole from cookie:", userRole);
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/5 bg-[#0e0e0e]/95 backdrop-blur-md">
@@ -117,6 +127,16 @@ function NavBar() {
                 <LogIn className="h-4 w-4" />
                 <span className="hidden lg:inline!">تسجيل الخروج</span>
               </button>
+
+              {isAdmin && (
+                <button
+                  onClick={openAdmin}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-accent transition-all duration-200 hover:bg-accent/10"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span className="hidden lg:inline!">لوحة التحكم</span>
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -200,6 +220,16 @@ function NavBar() {
                   <span>تسجيل الخروج</span>
                   <LogIn className="h-4 w-4" />
                 </button>
+
+                {isAdmin && (
+                  <button
+                    onClick={openAdmin}
+                    className="flex! w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-medium text-accent transition-all duration-200 hover:bg-accent/10"
+                  >
+                    <span>لوحة التحكم</span>
+                    <Settings className="h-4 w-4" />
+                  </button>
+                )}
               </>
             ) : (
               <>
