@@ -375,12 +375,19 @@ function FilterSelect({
   onChange: (v: string | null) => void;
   options: { value: string; label: string }[];
 }) {
+  const selectedOptionLabel =
+    options.find((option) => option.value === value)?.label ?? "";
+
   return (
     <div className="space-y-1.5">
       <p className="text-xs text-gray-500 font-medium tracking-wide">{label}</p>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="h-10 bg-black/40 border-white/10 text-white text-sm focus:ring-accent md:h-12 rounded-xl transition-all">
-          <SelectValue placeholder={`اختر ${label}`} />
+          <SelectValue>
+            <span className={selectedOptionLabel ? "text-white" : "text-gray-500"}>
+              {selectedOptionLabel || `اختر ${label}`}
+            </span>
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {options.map((o) => (
