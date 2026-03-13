@@ -80,6 +80,10 @@ type ServiceDetails = {
       currency_name: string;
       rate_to_usd: string;
     };
+    user: {
+      full_name: string;
+      description: string;
+    };
   };
 };
 
@@ -89,6 +93,7 @@ export default function ServiceDetailsContent() {
   const [service, setService] = useState<ServiceDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  console.log(service);
 
   useEffect(() => {
     if (!id) {
@@ -224,13 +229,24 @@ export default function ServiceDetailsContent() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span
-                    className="rounded-xl bg-accent/10 px-6 py-2 text-4xl font-bold text-accent"
-                    dir="ltr"
-                  >
-                    {service.price_original}{" "}
-                    {service.seller.country.currency_code}
-                  </span>
+                  <div className="flex items-center gap-2 rounded-xl bg-accent/10 px-5 py-3">
+                    {/* السعر بالدولار */}
+                    <span className="text-3xl font-bold text-accent" dir="ltr">
+                      {service.price_original}{" "}
+                      {service.seller.country.currency_code}
+                    </span>
+
+                    {/* سهم التحويل */}
+                    <span className="text-white/50 text-lg">→</span>
+
+                    {/* السعر بالعملة المحلية */}
+                    <span
+                      className="text-xl font-semibold text-white"
+                      dir="ltr"
+                    >
+                      ${service.price_usd}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="max-w-2xl space-y-4 rounded-2xl border border-white/5 bg-black/20 p-6 leading-relaxed text-gray-300">
@@ -301,11 +317,11 @@ export default function ServiceDetailsContent() {
               <div className="flex w-full flex-col items-start gap-6 rounded-2xl border border-white/5 bg-black/20 p-6 sm:flex-row sm:items-center">
                 <div className="flex-1 space-y-2 text-right">
                   <div className="text-lg font-bold text-white">
-                    {service.seller.email}
+                    {service.seller.user.full_name}
                   </div>
 
                   <div className="text-sm text-gray-400">
-                    {service.seller.description}
+                    {service.seller.user.description}
                   </div>
 
                   <div className="text-sm text-gray-500">

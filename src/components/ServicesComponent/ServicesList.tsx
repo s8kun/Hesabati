@@ -166,7 +166,7 @@ export default function ServicesList() {
         header: "المنصة",
         cell: (info) => (
           <span
-            className="inline-flex items-center justify-center bg-background px-3 py-1.5 rounded-lg border border-white/10 text-accent"
+            className="inline-flex items-center justify-center bg-background px-3 py-1.5 rounded-lg border  border-white/10"
             title={info.getValue()}
             aria-label={info.getValue()}
           >

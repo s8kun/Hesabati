@@ -93,7 +93,11 @@ export default function SearchServices() {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
-    const nextLocalFilters = createLocalFilters(filters, maxFollowers, maxPrice);
+    const nextLocalFilters = createLocalFilters(
+      filters,
+      maxFollowers,
+      maxPrice,
+    );
     const frameId = window.requestAnimationFrame(() => {
       setLocalFilters(nextLocalFilters);
     });
@@ -381,7 +385,7 @@ function FilterSelect({
         <SelectContent>
           {options.map((o) => (
             <SelectItem
-              className="bg-[#1e1e1e] hover:bg-accent"
+              className="bg-[#222121] hover:bg-accent text-white"
               key={o.value}
               value={o.value}
             >

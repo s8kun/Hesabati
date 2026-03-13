@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { format } from "date-fns";
 import {
   BadgeDollarSign,
@@ -36,6 +37,8 @@ export default function AnnouncementEditorDetailsFields({
   form,
   isEditMode,
 }: AnnouncementEditorDetailsFieldsProps) {
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
   const {
     control,
     register,
@@ -58,7 +61,7 @@ export default function AnnouncementEditorDetailsFields({
           بشكل مباشر.
         </p>
         <div
-          className="flex h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 transition focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
+          className="flex h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/4 px-4 transition focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
           dir="ltr"
         >
           <BadgeDollarSign className="h-5 w-5 shrink-0 text-gray-500" />
@@ -76,7 +79,9 @@ export default function AnnouncementEditorDetailsFields({
           />
         </div>
         {errors.price_original ? (
-          <p className="text-sm text-red-400">{errors.price_original.message}</p>
+          <p className="text-sm text-red-400">
+            {errors.price_original.message}
+          </p>
         ) : null}
       </div>
 
@@ -89,7 +94,7 @@ export default function AnnouncementEditorDetailsFields({
           وواضحًا.
         </p>
         <div
-          className="flex h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 transition focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
+          className="flex h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/4 px-4 transition focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
           dir="ltr"
         >
           <Users className="h-5 w-5 shrink-0 text-gray-500" />
@@ -129,13 +134,14 @@ export default function AnnouncementEditorDetailsFields({
               : undefined;
 
             return (
-              <Popover>
+              <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-12 w-full justify-between rounded-2xl border-white/20 bg-white/[0.04] px-3 text-left font-normal text-white hover:bg-white/8"
-                    dir="ltr"
+                    aria-haspopup="dialog"
+                    aria-expanded={isCalendarOpen}
+                    className="h-12 w-full justify-between rounded-2xl border-white/20 bg-white/4 px-3 text-left font-normal text-white hover:bg-white/8"
                   >
                     <span
                       className={field.value ? "text-white" : "text-white/70"}
@@ -152,28 +158,16 @@ export default function AnnouncementEditorDetailsFields({
                   align="start"
                 >
                   <Calendar
-                    className="text-white"
-                    classNames={{
-                      caption_label: "text-white",
-                      day: "text-white",
-                      day_button:
-                        "text-white hover:bg-accent hover:text-black data-[selected-single=true]:bg-accent data-[selected-single=true]:text-white data-[range-start=true]:bg-accent data-[range-start=true]:text-white data-[range-end=true]:bg-accent data-[range-end=true]:text-white",
-                      weekday: "text-white/75",
-                      outside: "text-white/45 aria-selected:text-white/45",
-                      disabled: "text-white/30",
-                      today:
-                        "text-white border border-accent/50 data-[selected=true]:bg-accent data-[selected=true]:text-white",
-                    }}
                     mode="single"
                     selected={selectedDate}
-                    onSelect={(date) =>
-                      field.onChange(date ? format(date, "yyyy-MM-dd") : "")
-                    }
-                    disabled={(date) => {
-                      const today = new Date();
-                      today.setHours(23, 59, 59, 999);
-                      return date > today;
+                    onSelect={(date) => {
+                      field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+
+                      if (date) {
+                        setIsCalendarOpen(false);
+                      }
                     }}
+                    disabled={(date) => date > new Date()}
                     initialFocus
                   />
                 </PopoverContent>
@@ -196,7 +190,7 @@ export default function AnnouncementEditorDetailsFields({
           <p className="text-xs leading-6 text-gray-500">
             حدد هل الإعلان متاح الآن للبيع أو تم بيعه بالفعل.
           </p>
-          <div className="flex h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 transition focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
+          <div className="flex h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/4 px-4 transition focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
             <CircleDot className="h-5 w-5 shrink-0 text-gray-500" />
             <Controller
               name="status"
@@ -241,7 +235,7 @@ export default function AnnouncementEditorDetailsFields({
           اختر المنصة أو نوع الحساب الأقرب لإعلانك حتى يظهر للمشتري الصحيح داخل
           التصفية والبحث.
         </p>
-        <div className="flex h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 transition focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
+        <div className="flex h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/4 px-4 transition focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
           <FolderPlus className="h-5 w-5 shrink-0 text-gray-500" />
           <Controller
             name="category_id"
@@ -255,7 +249,7 @@ export default function AnnouncementEditorDetailsFields({
               >
                 <SelectTrigger
                   size="sm"
-                  className="h-full w-full border-0 bg-transparent px-0 text-white shadow-none outline-none ring-0 focus:ring-0 data-[placeholder]:text-gray-500"
+                  className="h-full w-full border-0 bg-transparent px-0 text-white shadow-none outline-none ring-0 focus:ring-0 data-placeholder:text-gray-500"
                 >
                   <SelectValue>
                     <span
@@ -296,7 +290,7 @@ export default function AnnouncementEditorDetailsFields({
           بسرعة.
         </p>
         <div
-          className="flex h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 transition focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
+          className="flex h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/4 px-4 transition focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
           dir="ltr"
         >
           <Link2 className="h-5 w-5 shrink-0 text-gray-500" />
